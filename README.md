@@ -324,7 +324,7 @@ O projeto segue a metodologia **Scrum** com sprints de 2 semanas.
 
 Para mais informações sobre o projeto AutoPredict AI:
 
-- 📧 Email: [seu-email@exemplo.com]
+- 📧 Email: [matheusponte2010@hotmail.com]
 - 🐙 GitHub: [github.com/Mathdiogo/AutoPredict-AI]
 
 ---
