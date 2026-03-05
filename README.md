@@ -146,15 +146,15 @@ Para simular os dados da AutoPredict AI, serão utilizados datasets públicos re
 
 ### Datasets Selecionados
 
-1. **Vehicle Maintenance Data**
+1. **[Vehicle Maintenance Data](https://www.kaggle.com/datasets/chavindudulaj/vehicle-maintenance-data)**
    - Registros de manutenção preventiva e corretiva
    - Histórico de peças substituídas
 
-2. **Car Predictive Maintenance Data**
+2. **[Car Predictive Maintenance Data](https://www.kaggle.com/datasets/pragyanaianddsschool/car-predictive-maintenance-data)**
    - Dados de sensores em tempo real
    - Padrões de falhas
 
-3. **Engine Fault Detection Data**
+3. **[Engine Fault Detection Data](https://www.kaggle.com/datasets/ziya07/engine-fault-detection-data)**
    - Falhas de motor
    - Códigos de diagnóstico (DTC)
 
