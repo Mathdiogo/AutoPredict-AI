@@ -1,0 +1,214 @@
+version: '3.8'
+
+# ============================================================
+# AutoPredict AI - Docker Compose
+# ============================================================
+# Este arquivo sobe TODOS os serviços com um só comando:
+#   docker compose up -d
+#
+# Para ver os logs:
+#   docker compose logs -f
+#
+# Para parar tudo:
+#   docker compose down
+# ============================================================
+
+services:
+
+  # ------------------------------------------------------------
+  # MinIO - Data Lake (armazena arquivos CSV como se fosse S3)
+  # Console web: http://localhost:9001
+  # API:         http://localhost:9000
+  # ------------------------------------------------------------
+  minio:
+    image: minio/minio:latest
+    container_name: autopredict-minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"   # API S3-compatível
+      - "9001:9001"   # Console web (UI para visualizar buckets)
+    environment:
+      MINIO_ROOT_USER: ${MINIO_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD:-minioadmin123}
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - autopredict-network
+
+  # ------------------------------------------------------------
+  # PostgreSQL - Banco Relacional (logs de ingestão, metadados)
+  # Acesse: localhost:5432
+  # Ferramenta recomendada para visualizar: DBeaver ou TablePlus
+  # ------------------------------------------------------------
+  postgres:
+    image: postgres:15-alpine
+    container_name: autopredict-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-autopredict}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-autopredict123}
+      POSTGRES_DB: ${POSTGRES_DB:-autopredict}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-autopredict}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - autopredict-network
+
+  # ------------------------------------------------------------
+  # etcd - Serviço de configuração distribuída
+  # O Milvus PRECISA do etcd para funcionar (não acesse diretamente)
+  # ------------------------------------------------------------
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.5
+    container_name: autopredict-etcd
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
+    command: >
+      etcd
+      -advertise-client-urls=http://127.0.0.1:2379
+      -listen-client-urls http://0.0.0.0:2379
+      --data-dir /etcd
+    volumes:
+      - etcd_data:/etcd
+    networks:
+      - autopredict-network
+
+  # ------------------------------------------------------------
+  # Milvus - Banco Vetorial (onde ficam os embeddings para busca semântica)
+  # API gRPC: localhost:19530
+  # API HTTP: localhost:9091
+  #
+  # CONCEITO: Milvus armazena vetores numéricos (embeddings) e
+  # permite buscar os K vizinhos mais próximos por similaridade.
+  # É assim que o RAG encontra documentos relevantes para a pergunta.
+  # ------------------------------------------------------------
+  milvus:
+    image: milvusdb/milvus:v2.4.0
+    container_name: autopredict-milvus
+    command: ["milvus", "run", "standalone"]
+    ports:
+      - "19530:19530"   # gRPC (usado pelo pymilvus)
+      - "9091:9091"     # HTTP
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+      MINIO_ACCESS_KEY_ID: ${MINIO_USER:-minioadmin}
+      MINIO_SECRET_ACCESS_KEY: ${MINIO_PASSWORD:-minioadmin123}
+    volumes:
+      - milvus_data:/var/lib/milvus
+    depends_on:
+      - etcd
+      - minio
+    networks:
+      - autopredict-network
+
+  # ------------------------------------------------------------
+  # Ollama - LLM local (roda modelos de IA sem enviar dados pra nuvem!)
+  # API: http://localhost:11434
+  #
+  # Após subir, baixe um modelo:
+  #   docker exec autopredict-ollama ollama pull llama3.2:3b
+  #
+  # Para usar GPU NVIDIA, descomente o bloco "deploy" abaixo.
+  # ------------------------------------------------------------
+  ollama:
+    image: ollama/ollama:latest
+    container_name: autopredict-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    # --- Descomente para usar GPU NVIDIA ---
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    networks:
+      - autopredict-network
+
+  # ------------------------------------------------------------
+  # FastAPI - Backend (API REST que orquestra tudo)
+  # Docs interativas: http://localhost:8000/docs
+  # ------------------------------------------------------------
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: autopredict-api
+    ports:
+      - "8000:8000"
+    environment:
+      MINIO_ENDPOINT: minio:9000
+      MINIO_USER: ${MINIO_USER:-minioadmin}
+      MINIO_PASSWORD: ${MINIO_PASSWORD:-minioadmin123}
+      POSTGRES_URL: postgresql://${POSTGRES_USER:-autopredict}:${POSTGRES_PASSWORD:-autopredict123}@postgres:5432/${POSTGRES_DB:-autopredict}
+      MILVUS_HOST: milvus
+      MILVUS_PORT: 19530
+      OLLAMA_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2:3b}
+    volumes:
+      - ./src:/app/src    # Hot reload: edições no código refletem imediatamente
+      - ./data:/app/data  # Datasets ficam acessíveis no container
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - autopredict-network
+    restart: unless-stopped
+
+  # ------------------------------------------------------------
+  # Gradio - Frontend (interface web do chatbot)
+  # Acesse: http://localhost:7860
+  # ------------------------------------------------------------
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: autopredict-frontend
+    ports:
+      - "7860:7860"
+    environment:
+      API_URL: http://api:8000
+    volumes:
+      - ./src/frontend:/app/src/frontend   # Hot reload
+    depends_on:
+      - api
+    networks:
+      - autopredict-network
+    restart: unless-stopped
+
+# ============================================================
+# Volumes (os dados ficam salvos mesmo se os containers reiniciarem)
+# ============================================================
+volumes:
+  minio_data:
+  postgres_data:
+  etcd_data:
+  milvus_data:
+  ollama_data:
+
+# ============================================================
+# Rede interna para os containers se comunicarem pelo nome
+# Ex: o API acessa o Postgres como "postgres:5432"
+# ============================================================
+networks:
+  autopredict-network:
+    driver: bridge

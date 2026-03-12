@@ -1,0 +1,16 @@
+# Arquivos gerados / não commitar
+.env
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+
+# Dados (muito grandes para o Git)
+data/*.csv
+data/*.parquet
+data/*.json
+
+# Docker
+.docker/

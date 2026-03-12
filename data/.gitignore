@@ -1,0 +1,5 @@
+# Nao versionar datasets grandes
+*.parquet
+*.json
+!README.md
+!.gitignore

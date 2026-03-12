@@ -1,0 +1,25 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Dependências do sistema necessárias para compilar alguns pacotes Python
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Instala dependências Python primeiro (camada de cache)
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copia o código fonte
+COPY src/ ./src/
+
+# Cria pasta data (datasets serão montados via volume)
+RUN mkdir -p data
+
+EXPOSE 8000
+
+# --reload faz o servidor reiniciar automaticamente quando você editar o código
+CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

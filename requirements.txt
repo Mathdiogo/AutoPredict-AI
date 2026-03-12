@@ -1,0 +1,32 @@
+# ============================================================
+# AutoPredict AI - Dependências Python
+# ============================================================
+
+# --- API & Web Framework ---
+fastapi==0.111.0            # Framework para criar APIs REST
+uvicorn[standard]==0.30.1   # Servidor ASGI para rodar a FastAPI
+python-multipart==0.0.9     # Para upload de arquivos pela API
+
+# --- Banco de Dados ---
+pymilvus==2.4.0             # Cliente Python para o Milvus (banco vetorial)
+minio==7.2.7                # Cliente Python para o MinIO (data lake)
+psycopg2-binary==2.9.9      # Cliente Python para o PostgreSQL
+sqlalchemy==2.0.30          # ORM para facilitar queries no PostgreSQL
+
+# --- IA / ML ---
+# sentence-transformers converte texto em vetores numéricos (embeddings)
+# O modelo all-MiniLM-L6-v2 gera vetores de 384 dimensões
+# É leve, rápido e funciona muito bem para busca semântica
+sentence-transformers==3.0.1
+torch==2.3.1                # Backend do sentence-transformers (CPU por padrão)
+numpy==1.26.4               # Operações com arrays (usado nos embeddings)
+pandas==2.2.2               # Manipulação dos datasets CSV
+
+# --- Configuração & Utilitários ---
+pydantic==2.7.1             # Validação de dados (schemas de request/response)
+pydantic-settings==2.3.1    # Lê configurações do .env automaticamente
+python-dotenv==1.0.1        # Carrega variáveis do arquivo .env
+requests==2.32.3            # Chamadas HTTP (para falar com o Ollama)
+
+# --- Frontend ---
+gradio==4.36.1              # Cria a interface web do chatbot com poucas linhas
