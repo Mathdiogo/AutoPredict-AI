@@ -316,7 +316,16 @@ O projeto segue a metodologia **Scrum** com sprints de 2 semanas.
 
 ## 👥 Equipe
 
-*[Adicione aqui os nomes dos integrantes do grupo]*
+*[200817 - Adrian Antonio de Oliveira
+212199 - Eduardo Piratello
+222239 - Giovana Antunes Soares
+222312 - Heloisa Goulart Vicencio
+212146 - Juliane Zaetum de Oliveira
+212109 - Larissa Cezar Eringer
+222236 - Lucas Martins
+190435 - Matheus Diogo Teixeira
+222804 - Nicolas Andrade De Marchi Nicolau
+222255 - Pedro Henrique Cavalheiro Modesto]*
 
 ---
 
