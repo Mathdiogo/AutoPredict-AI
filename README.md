@@ -350,6 +350,5 @@ Este projeto é desenvolvido para fins acadêmicos.
 
 **AutoPredict AI** - Prevendo o futuro da manutenção automotiva 🚗✨
 
-*Desenvolvido com ❤️ por [Nome da Equipe]*
 
 </div>
