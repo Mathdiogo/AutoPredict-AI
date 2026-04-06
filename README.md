@@ -1,354 +1,420 @@
 # AutoPredict AI 🚗🤖
 
-<div align="center">
+**Plataforma de Diagnóstico Automotivo Preditivo com RAG + LLM Local**
 
-**Plataforma RAG para Diagnóstico Automotivo Preditivo**
+O AutoPredict AI é um chatbot especializado em manutenção de veículos. Ele usa **RAG (Retrieval-Augmented Generation)** para buscar informações em 3 bases de dados reais e gerar respostas fundamentadas usando um LLM rodando 100% localmente (sem custos de API).
 
-![Status](https://img.shields.io/badge/Status-Sprint%201-blue)
-![License](https://img.shields.io/badge/License-MIT-green)
-![AI](https://img.shields.io/badge/AI-RAG-orange)
-
-</div>
+> Para documentação de produto, backlog e requisitos, veja [PROJECT_SPEC.md](PROJECT_SPEC.md).
 
 ---
 
-## 📋 Índice
+## Sumário
 
-- [Sobre o Projeto](#sobre-o-projeto)
-- [Domínio](#domínio)
-- [Problema de Negócio](#problema-de-negócio)
-- [Solução Proposta](#solução-proposta)
-- [Arquitetura](#arquitetura)
-- [Datasets](#datasets)
-- [Requisitos](#requisitos)
-- [Metodologia Scrum](#metodologia-scrum)
-- [Product Backlog](#product-backlog)
-- [Tecnologias](#tecnologias)
-- [Roadmap](#roadmap)
+1. [Pré-requisitos](#1-pré-requisitos)
+2. [Instalação](#2-instalação)
+3. [Como Rodar](#3-como-rodar)
+4. [Primeiros Passos (setup inicial)](#4-primeiros-passos-setup-inicial)
+5. [Como Usar](#5-como-usar)
+6. [Serviços e Portas](#6-serviços-e-portas)
+7. [Arquitetura](#7-arquitetura)
+8. [Comandos Úteis](#8-comandos-úteis)
+9. [Solução de Problemas](#9-solução-de-problemas)
 
 ---
 
-## 🎯 Sobre o Projeto
+## 1. Pré-requisitos
 
-A **AutoPredict AI** é uma plataforma de inteligência artificial especializada em **manutenção preditiva de veículos**, utilizando técnicas avançadas de **Retrieval-Augmented Generation (RAG)** para auxiliar no diagnóstico e prevenção de falhas automotivas.
+Antes de começar, você precisa ter instalado:
 
-### Objetivos
+| Ferramenta | Versão mínima | Download |
+|---|---|---|
+| Docker Desktop | 24.x | https://www.docker.com/products/docker-desktop |
+| Docker Compose | 2.x (incluído no Desktop) | — |
+| Git | qualquer | https://git-scm.com |
 
-- 🔧 Reduzir custos de manutenção
-- 🛡️ Aumentar a segurança dos veículos
-- ⚡ Evitar paradas inesperadas
-- 📊 Melhorar a gestão de frotas
-- 🤖 Auxiliar técnicos e engenheiros no diagnóstico
+> **Recursos de hardware recomendados:** 16 GB RAM, 20 GB de espaço em disco.
+> O LLM (llama3.2:3b) roda em CPU, então mais RAM = melhor desempenho.
 
----
+Verifique se tudo está instalado:
 
-## 🏭 Domínio
-
-**Manutenção Preditiva de Veículos**
-
-O projeto opera no domínio de manutenção preditiva automotiva, utilizando:
-
-- 📡 Dados de sensores automotivos
-- 📝 Histórico de manutenção
-- ⚠️ Registros de falhas
-- 🔍 Análise de padrões
-
-A aplicação de IA permite identificar padrões que indicam possíveis problemas mecânicos ou eletrônicos **antes** que ocorram falhas críticas.
+```bash
+docker --version        # Docker version 24.x.x
+docker compose version  # Docker Compose version v2.x.x
+```
 
 ---
 
-## 💼 Problema de Negócio
+## 2. Instalação
 
-### Desafios Enfrentados
+### 2.1 Clone o repositório
 
-Empresas que operam frotas de veículos (transporte, logística, mobilidade) enfrentam:
+```bash
+git clone https://github.com/Mathdiogo/AutoPredict-AI.git
+cd AutoPredict-AI
+```
 
-- ❌ Falhas inesperadas em veículos
-- 💰 Custos elevados de manutenção
-- 📊 Dificuldade de analisar grandes volumes de dados de sensores
-- 🔧 Diagnóstico lento de problemas mecânicos/eletrônicos
+### 2.2 Estrutura de pastas necessária
 
-### Consequências
+Crie a pasta `data/` com os datasets brutos (Bronze):
 
-- ⏱️ Atrasos operacionais
-- 📈 Aumento de custos
-- ⚠️ Riscos de segurança
-- 🚫 Paradas não planejadas
+```
+AutoPredict-AI/
+├── data/
+│   ├── vehicle_maintenance_data.csv   ← Dataset 1 (Kaggle)
+│   ├── cars_hyundai.csv               ← Dataset 2 (Kaggle)
+│   └── engine_fault_detection_dataset.csv  ← Dataset 3 (Kaggle)
+```
 
----
+**Links dos datasets:**
+- [Vehicle Maintenance Data](https://www.kaggle.com/datasets/chavindudulaj/vehicle-maintenance-data)
+- [Car Predictive Maintenance](https://www.kaggle.com/datasets/pragyanaianddsschool/car-predictive-maintenance-data)
+- [Engine Fault Detection](https://www.kaggle.com/datasets/ziya07/engine-fault-detection-data)
 
-## 💡 Solução Proposta
-
-Desenvolvimento de uma **plataforma baseada em IA** que permite:
-
-✅ Consultar dados de veículos de forma inteligente  
-✅ Identificar possíveis causas de falhas  
-✅ Auxiliar engenheiros e técnicos na tomada de decisão  
-✅ Prever necessidade de manutenção  
-✅ Analisar padrões de falhas históricos  
+> Se a pasta `data/` não existir, o pipeline de ingestão irá falhar com `FileNotFoundError`.
 
 ---
 
-## 🏗️ Arquitetura
+## 3. Como Rodar
 
-A solução é composta por três camadas principais:
+### 3.1 Subir todos os serviços
 
-### 📦 Camada de Dados
+```bash
+docker compose up -d
+```
 
-- **Data Lake**: MinIO (armazenamento de objetos)
-- **Banco Relacional**: PostgreSQL (metadados)
-- **Banco Vetorial**: Milvus (embeddings)
-- **Padrão Medallion**: Bronze → Silver → Gold
+Isso vai iniciar **8 containers**:
 
-### 🧠 Camada de IA
+| Container | Função |
+|---|---|
+| `autopredict-api` | API REST (FastAPI) |
+| `autopredict-frontend` | Interface web (Gradio) |
+| `autopredict-ollama` | LLM local (llama3.2:3b) |
+| `autopredict-milvus` | Banco vetorial (embeddings) |
+| `autopredict-postgres` | Banco relacional (metadados) |
+| `autopredict-minio` | Data Lake (arquivos CSV) |
+| `autopredict-mlflow` | Experimentos de ML |
+| `autopredict-etcd` | Dependência interna do Milvus |
 
-- **LLM Local**: Ollama
-- **Pipeline RAG**: Retrieval-Augmented Generation
-- **Embeddings**: Modelos de vetorização
+Aguarde ~1 minuto até todos os serviços ficarem saudáveis:
 
-### 🌐 Camada de Aplicação
+```bash
+docker compose ps
+```
 
-- **API REST**: FastAPI
-- **Interface**: Gradio
-- **Documentação**: Swagger/OpenAPI
+Todos devem exibir `Up` ou `healthy`.
 
-### 🐳 Infraestrutura
+### 3.2 Parar os serviços
 
-- Docker & Docker Compose
-- Makefile para automação
-- Ambiente containerizado
+```bash
+docker compose down
+```
+
+Para parar **e apagar os volumes** (dados serão perdidos):
+
+```bash
+docker compose down -v
+```
+
+---
+
+## 4. Primeiros Passos (setup inicial)
+
+Na **primeira execução**, você precisa rodar o pipeline de dados e baixar o modelo LLM. Isso só precisa ser feito uma vez.
+
+### Passo 1 — Baixar o modelo LLM
+
+```bash
+docker exec autopredict-ollama ollama pull llama3.2:3b
+```
+
+> O download é de ~2 GB. Aguarde a conclusão antes de continuar.
+
+### Passo 2 — Executar o pipeline de dados (Bronze → Silver → Gold)
+
+O pipeline processa os CSVs brutos, limpa os dados e gera os embeddings no Milvus:
+
+```bash
+docker exec -w /app autopredict-api python -m src.data_pipeline.run_pipeline
+```
+
+Isso executa em sequência:
+1. **Bronze** — lê os CSVs de `data/` e salva no MinIO
+2. **Silver** — limpa e normaliza os dados
+3. **Gold** — gera embeddings e indexa no Milvus (11.100 documentos)
+
+> Tempo estimado: ~5-10 minutos (inclui download do modelo de embedding na primeira vez).
+
+### Passo 3 — Treinar os modelos de ML
+
+```bash
+docker exec -w /app autopredict-api python -m src.ml.train
+```
+
+Treina 3 modelos (Logistic Regression, Random Forest, XGBoost) para cada um dos 3 datasets e registra no MLflow.
+
+> Tempo estimado: ~2-3 minutos.
+
+### Verificar se está tudo ok
+
+```bash
+docker exec -w /app autopredict-api python -c "
+from src.database.milvus_client import MilvusClient
+c = MilvusClient()
+for col in ['vehicle_maintenance', 'car_predictive', 'engine_fault']:
+    print(col, c.get_count(col))
+"
+```
+
+Saída esperada:
+```
+vehicle_maintenance 5000
+car_predictive 1100
+engine_fault 5000
+```
+
+---
+
+## 5. Como Usar
+
+### 5.1 Interface Web (recomendado)
+
+Acesse o chat em: **http://localhost:7860**
+
+A interface permite:
+- Digitar perguntas sobre manutenção e diagnóstico de veículos
+- Ver as respostas sendo geradas em tempo real (streaming)
+- Ativar "Mostrar documentos usados como contexto" para ver as fontes
+
+**Exemplos de perguntas:**
+
+```
+Quais são as causas mais comuns de superaquecimento do motor?
+Qual a pressão ideal dos pneus?
+Como saber se o freio precisa de manutenção?
+O que pode causar vibração excessiva no motor?
+Meu carro tem 80.000km, o que verificar preventivamente?
+Qual a espessura mínima da pastilha de freio antes de trocar?
+```
+
+### 5.2 API REST
+
+A API está disponível em **http://localhost:8000**.
+
+Documentação interativa (Swagger): **http://localhost:8000/docs**
+
+**Fazer uma pergunta via POST:**
+
+```bash
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{"question": "O que causa falha no motor?", "min_score": 0.20}'
+```
+
+Resposta:
+```json
+{
+  "answer": "Com base nos dados de sensores...",
+  "sources": [...],
+  "total_docs_retrieved": 15,
+  "model": "llama3.2:3b"
+}
+```
+
+**Streaming (tokens em tempo real) via GET:**
+
+```bash
+curl "http://localhost:8000/chat/stream?question=Qual+a+pressao+ideal+dos+pneus"
+```
+
+**Verificar status dos serviços:**
+
+```bash
+curl http://localhost:8000/health
+```
+
+### 5.3 MLflow (experimentos de ML)
+
+Acesse o painel de experimentos em: **http://localhost:5001**
+
+Lá você encontra:
+- Métricas de cada modelo (Accuracy, F1, AUC)
+- Comparação entre modelos por dataset
+- Artefatos (relatórios de classificação)
+
+### 5.4 MinIO (Data Lake)
+
+Acesse o console em: **http://localhost:9001**
+
+Credenciais padrão:
+- **Usuário:** `minioadmin`
+- **Senha:** `minioadmin`
+
+Os dados estão organizados em buckets:
+- `bronze/` — CSVs brutos originais
+- `silver/` — dados limpos e normalizados
+- `gold/` — dados processados prontos para o modelo
+
+---
+
+## 6. Serviços e Portas
+
+| Serviço | URL | Credenciais |
+|---|---|---|
+| Interface Web (Gradio) | http://localhost:7860 | — |
+| API REST | http://localhost:8000 | — |
+| API Docs (Swagger) | http://localhost:8000/docs | — |
+| MLflow | http://localhost:5001 | — |
+| MinIO Console | http://localhost:9001 | minioadmin / minioadmin |
+| Milvus | localhost:19530 | — (interno) |
+| PostgreSQL | localhost:5432 | postgres / postgres |
+| Ollama | http://localhost:11434 | — (interno) |
+
+---
+
+## 7. Arquitetura
 
 ```
 ┌─────────────────────────────────────────────────┐
-│              Interface (Gradio)                 │
+│        Interface Web (Gradio :7860)             │
+└────────────────┬────────────────────────────────┘
+                 │ HTTP
+┌────────────────▼────────────────────────────────┐
+│         API REST (FastAPI :8000)                │
+│   POST /chat  |  GET /chat/stream  |  /health   │
 └────────────────┬────────────────────────────────┘
                  │
-┌────────────────▼────────────────────────────────┐
-│              API REST (FastAPI)                 │
-└────────────────┬────────────────────────────────┘
-                 │
-┌────────────────▼────────────────────────────────┐
-│           Pipeline RAG + LLM (Ollama)           │
-└────┬───────────┬───────────────┬────────────────┘
-     │           │               │
-┌────▼────┐ ┌───▼─────┐   ┌─────▼──────┐
-│ MinIO   │ │ Milvus  │   │ PostgreSQL │
-│(Data    │ │(Vetores)│   │ (Metadata) │
-│ Lake)   │ │         │   │            │
-└─────────┘ └─────────┘   └────────────┘
+     ┌───────────┴───────────┐
+     │                       │
+┌────▼────────────┐   ┌──────▼──────────────────┐
+│  Retriever      │   │  Generator              │
+│  ─────────      │   │  ─────────              │
+│  Embedding →    │   │  Few-shot prompt +      │
+│  Milvus search  │   │  Ollama (llama3.2:3b)   │
+│  MMR reranking  │   │  Streaming response     │
+└────────────────┘   └─────────────────────────┘
+        │
+┌───────▼─────────────────────────────────────┐
+│  Milvus (banco vetorial)                    │
+│  ├── vehicle_maintenance  (5.000 docs)      │
+│  ├── car_predictive       (1.100 docs)      │
+│  └── engine_fault         (5.000 docs)      │
+└─────────────────────────────────────────────┘
+
+Pipeline de Dados (Medallion):
+  data/ (CSV) → Bronze (MinIO) → Silver (MinIO) → Gold (Milvus)
+
+Modelos ML (MLflow):
+  3 datasets × 3 algoritmos = 9 modelos registrados
+  (LogisticRegression, RandomForest, XGBoost)
 ```
 
 ---
 
-## 📊 Datasets
+## 8. Comandos Úteis
 
-Para simular os dados da AutoPredict AI, serão utilizados datasets públicos relacionados a manutenção e diagnóstico automotivo:
+### Re-indexar o Milvus (após trocar o modelo de embedding)
 
-### Datasets Selecionados
+```bash
+# Dropar e recriar coleções
+docker exec -w /app autopredict-api python -c "
+from src.database.milvus_client import MilvusClient
+c = MilvusClient()
+for col in ['vehicle_maintenance', 'car_predictive', 'engine_fault']:
+    c.drop_collection(col)
+    c.create_collection(col)
+    print(col, '→ recriada')
+"
 
-1. **[Vehicle Maintenance Data](https://www.kaggle.com/datasets/chavindudulaj/vehicle-maintenance-data)**
-   - Registros de manutenção preventiva e corretiva
-   - Histórico de peças substituídas
+# Re-indexar
+docker exec -w /app autopredict-api python -m src.data_pipeline.gold
+```
 
-2. **[Car Predictive Maintenance Data](https://www.kaggle.com/datasets/pragyanaianddsschool/car-predictive-maintenance-data)**
-   - Dados de sensores em tempo real
-   - Padrões de falhas
+### Re-treinar modelos ML
 
-3. **[Engine Fault Detection Data](https://www.kaggle.com/datasets/ziya07/engine-fault-detection-data)**
-   - Falhas de motor
-   - Códigos de diagnóstico (DTC)
+```bash
+docker exec -w /app autopredict-api python -m src.ml.train
+```
 
-### Informações Contidas
+### Rodar avaliação de métricas (retrieval + RAG)
 
-- 🌡️ Temperatura do motor
-- 🛢️ Pressão do óleo
-- 📳 Vibração
-- ⚠️ Falhas detectadas
-- 📅 Histórico de manutenção
-- 🔧 Componentes afetados
+```bash
+# Apenas retrieval (rápido, ~1 min):
+docker exec -w /app autopredict-api python -m src.evaluation.eval_rag retrieval_only
 
----
+# Pipeline completo com LLM (lento, ~10 min):
+docker exec -w /app autopredict-api python -m src.evaluation.eval_rag full 4
+```
 
-## 📝 Requisitos
+### Ver logs de um serviço
 
-### Requisitos Funcionais
+```bash
+docker logs autopredict-api --tail 50
+docker logs autopredict-frontend --tail 50
+docker logs autopredict-ollama --tail 50
+```
 
-| ID | Descrição |
-|----|-----------|
-| **RF1** | O sistema deve permitir consultas sobre dados de manutenção de veículos |
-| **RF2** | O sistema deve recuperar informações relevantes a partir de um banco de dados de documentos e registros |
-| **RF3** | O sistema deve gerar respostas usando um modelo de linguagem (LLM) |
-| **RF4** | O sistema deve permitir consulta via interface web |
-| **RF5** | O sistema deve fornecer informações relacionadas a falhas e possíveis diagnósticos |
+### Reconstruir a imagem da API (após alterar requirements.txt)
 
-### Requisitos Não Funcionais
-
-| ID | Descrição |
-|----|-----------|
-| **RNF1** | O sistema deve ser executado em ambiente containerizado utilizando Docker |
-| **RNF2** | A arquitetura deve seguir o padrão de governança de dados Medallion (Bronze, Silver, Gold) |
-| **RNF3** | O sistema deve possuir uma API REST para acesso às funcionalidades |
-| **RNF4** | Os dados devem ser armazenados em um Data Lake |
-| **RNF5** | O sistema deve possuir documentação técnica |
+```bash
+docker compose up -d --build api
+```
 
 ---
 
-## 🏃 Metodologia Scrum
+## 9. Solução de Problemas
 
-O projeto segue a metodologia **Scrum** com sprints de 2 semanas.
+### "Não foi possível conectar à API" no frontend
 
-### Papéis Definidos
+Verifique se todos os containers estão rodando:
 
-| Papel | Responsabilidade |
-|-------|------------------|
-| **Product Owner** | Definir requisitos do produto e priorizar o backlog |
-| **Scrum Master** | Garantir o processo Scrum e remover impedimentos |
-| **Development Team** | Desenvolvimento técnico do sistema |
+```bash
+docker compose ps
+```
 
-### Distribuição de Papéis
+Se algum estiver `Exited`, veja o motivo:
 
-| Papel | Responsável |
-|-------|-------------|
-| Product Owner | Integrante do grupo |
-| Scrum Master | Integrante do grupo |
-| Desenvolvedor Backend | Integrante do grupo |
-| Desenvolvedor Dados/IA | Integrante do grupo |
+```bash
+docker logs autopredict-api
+```
 
----
+### Respostas com "⚠️ O modelo demorou muito para responder"
 
-## 📋 Product Backlog
+O LLM ainda está sendo carregado ou a fila está ocupada. Aguarde 1-2 minutos e tente novamente. Isso é normal na primeira pergunta após subir os containers.
 
-### Sprint 1 - Definição do Produto ✅
+### Milvus com 0 documentos após subir os containers
 
-| ID | Item | Prioridade | Status |
-|----|------|------------|--------|
-| 1 | Definir domínio do projeto | Alta | ✅ Concluído |
-| 2 | Definir empresa fictícia | Alta | ✅ Concluído |
-| 3 | Definir problema de negócio | Alta | ✅ Concluído |
-| 4 | Selecionar datasets públicos | Alta | ✅ Concluído |
-| 5 | Definir arquitetura inicial do sistema | Alta | ✅ Concluído |
-| 6 | Configurar ambiente Docker | Média | 🔄 Em progresso |
-| 7 | Criar Data Lake no MinIO | Média | 📅 Planejado |
-| 8 | Criar banco PostgreSQL para metadados | Média | 📅 Planejado |
-| 9 | Implementar pipeline de ingestão de dados | Média | 📅 Planejado |
-| 10 | Definir pipeline RAG | Média | 📅 Planejado |
+O pipeline Gold precisa ser re-executado. Execute o Passo 2 da seção [Primeiros Passos](#4-primeiros-passos-setup-inicial).
 
----
+### `FileNotFoundError` ao rodar o pipeline
 
-## 🛠️ Tecnologias
+A pasta `data/` não existe ou os CSVs não foram colocados lá. Veja a seção [Estrutura de pastas](#22-estrutura-de-pastas-necessária).
 
-### Backend & API
-![Python](https://img.shields.io/badge/Python-3.11+-blue?logo=python)
-![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
+### Erro de porta em uso (`bind: address already in use`)
 
-### Inteligência Artificial
-![Ollama](https://img.shields.io/badge/Ollama-LLM-orange)
-![RAG](https://img.shields.io/badge/RAG-Pipeline-purple)
+Alguma porta (7860, 8000, 5001, etc.) está sendo usada por outro processo. Identifique e pare o processo, ou altere a porta no `docker-compose.yml`.
 
-### Dados
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?logo=postgresql&logoColor=white)
-![MinIO](https://img.shields.io/badge/MinIO-C72E49?logo=minio&logoColor=white)
-![Milvus](https://img.shields.io/badge/Milvus-Vector%20DB-blue)
+### Erro no XGBoost (`num_class`)
 
-### Interface
-![Gradio](https://img.shields.io/badge/Gradio-FF7C00?logo=gradio&logoColor=white)
+Isso era um bug da versão anterior, já corrigido. Certifique-se de estar na versão mais recente:
 
-### Infraestrutura
-![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
-![Docker Compose](https://img.shields.io/badge/Docker%20Compose-2496ED?logo=docker&logoColor=white)
+```bash
+git pull
+docker compose up -d --build api
+```
 
 ---
 
-## 🗺️ Roadmap
+## Equipe
 
-### Sprint 1 - Definição do Produto (Atual) ✅
-- [x] Escolha do domínio
-- [x] Definição da empresa fictícia
-- [x] Definição do problema de negócio
-- [x] Levantamento de requisitos
-- [x] Definição dos papéis Scrum
-- [x] Product Backlog inicial
-
-### Sprint 2 - Infraestrutura Base 📅
-- [ ] Configuração do Docker Compose
-- [ ] Setup do MinIO (Data Lake)
-- [ ] Setup do PostgreSQL
-- [ ] Setup do Milvus
-- [ ] Documentação de setup
-
-### Sprint 3 - Ingestão de Dados 📅
-- [ ] Pipeline de ingestão (Bronze)
-- [ ] Limpeza de dados (Silver)
-- [ ] Dados processados (Gold)
-- [ ] Testes de pipeline
-
-### Sprint 4 - Pipeline RAG 📅
-- [ ] Implementação do RAG
-- [ ] Integração com LLM (Ollama)
-- [ ] Geração de embeddings
-- [ ] Testes de recuperação
-
-### Sprints 5-12 📅
-- [ ] API REST
-- [ ] Interface Gradio
-- [ ] Testes e validação
-- [ ] Documentação final
-- [ ] Deploy
-
----
-
-## 📄 Entregáveis da Sprint 1
-
-### ✅ Documentação
-- [x] README.md completo
-- [x] Definição do domínio
-- [x] Descrição da empresa fictícia
-- [x] Problema de negócio identificado
-- [x] Requisitos levantados
-
-### ✅ Planejamento
-- [x] Papéis Scrum definidos
-- [x] Product Backlog inicial
-- [x] Arquitetura conceitual
-- [x] Datasets selecionados
-
----
-
-## 👥 Equipe
-
-Integrantes:
-
-- 190435 - Matheus Diogo Teixeira
-- 200817 - Adrian Antonio de Oliveira
-- 212199 - Eduardo Piratello
-- 222239 - Giovana Antunes Soares
-- 222312 - Heloisa Goulart Vicencio
-- 212146 - Juliane Zaetum de Oliveira
-- 212109 - Larissa Cezar Eringer
-- 222236 - Lucas Martins
-- 222804 - Nicolas Andrade De Marchi Nicolau
-- 222255 - Pedro Henrique Cavalheiro Modesto
-
----
-
-## 📞 Contato
-
-Para mais informações sobre o projeto AutoPredict AI:
-
-- 📧 Email: [matheusponte2010@hotmail.com]
-- 🐙 GitHub: [github.com/Mathdiogo/AutoPredict-AI]
-
----
-
-## 📜 Licença
-
-Este projeto é desenvolvido para fins acadêmicos.
-
----
-
-<div align="center">
-
-**AutoPredict AI** - Prevendo o futuro da manutenção automotiva 🚗✨
-
-
-</div>
+| RA | Nome |
+|---|---|
+| 190435 | Matheus Diogo Teixeira |
+| 200817 | Adrian Antonio de Oliveira |
+| 212199 | Eduardo Piratello |
+| 222239 | Giovana Antunes Soares |
+| 222312 | Heloisa Goulart Vicencio |
+| 212146 | Juliane Zaetum de Oliveira |
+| 212109 | Larissa Cezar Eringer |
+| 222236 | Lucas Martins |
+| 222804 | Nicolas Andrade De Marchi Nicolau |
+| 222255 | Pedro Henrique Cavalheiro Modesto |

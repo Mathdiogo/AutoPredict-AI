@@ -29,6 +29,9 @@
 
 import logging
 from dataclasses import dataclass
+
+import numpy as np
+
 from src.database.milvus_client import MilvusClient
 from src.embeddings.embedder import get_embedder
 from src.config import get_settings
@@ -64,7 +67,49 @@ class Retriever:
         self.embedder = get_embedder()
         self.settings = get_settings()
 
-    def retrieve(self, query: str, top_k_per_collection: int | None = None) -> list[RetrievedDocument]:
+    def _mmr_rerank(
+        self,
+        query_embedding: list[float],
+        docs: list["RetrievedDocument"],
+        k: int,
+        lambda_: float = 0.65,
+    ) -> list["RetrievedDocument"]:
+        """
+        Maximum Marginal Relevance: seleciona k documentos que maximizam
+        simultaneamente relevância com a query E diversidade entre si.
+
+        lambda_=0.65 → 65% relevância + 35% diversidade.
+        """
+        if len(docs) <= k:
+            return docs
+
+        # Re-embeda os textos candidatos para cálculo de similaridade interna
+        texts = [d.text for d in docs]
+        doc_embs = np.array(self.embedder.embed_batch(texts))
+        q_emb = np.array(query_embedding)
+
+        selected: list[int] = []
+        remaining = list(range(len(docs)))
+
+        while len(selected) < k and remaining:
+            best_idx, best_score = None, -float("inf")
+            for idx in remaining:
+                relevance = float(np.dot(q_emb, doc_embs[idx]))
+                if not selected:
+                    mmr_score = relevance
+                else:
+                    sims = np.dot(doc_embs[selected], doc_embs[idx])
+                    mmr_score = lambda_ * relevance - (1 - lambda_) * float(np.max(sims))
+                if mmr_score > best_score:
+                    best_score = mmr_score
+                    best_idx = idx
+            if best_idx is not None:
+                selected.append(best_idx)
+                remaining.remove(best_idx)
+
+        return [docs[i] for i in selected]
+
+    def retrieve(self, query: str, top_k_per_collection: int | None = None) -> list["RetrievedDocument"]:
         """
         Busca documentos relevantes nos 3 datasets para uma pergunta.
 
@@ -80,30 +125,30 @@ class Retriever:
         settings = self.settings
         k = top_k_per_collection or settings.top_k_per_collection
 
-        # Converte a pergunta em vetor
         logger.info(f"[Retriever] Query: '{query[:80]}...' (buscando k={k} por coleção)")
         query_embedding = self.embedder.embed_text(query)
 
-        # Busca nas 3 coleções em sequência
-        # (pymilvus não é async, então não dá pra paralelizar nativamente)
+        # Busca o dobro de candidatos por coleção para alimentar o MMR
+        candidate_k = k * 2
+
         collections = [
             settings.milvus_collection_maintenance,
             settings.milvus_collection_predictive,
             settings.milvus_collection_engine,
         ]
 
-        all_documents: list[RetrievedDocument] = []
+        all_candidates: list[RetrievedDocument] = []
 
         for collection_name in collections:
             try:
                 results = self.milvus.search(
                     collection_name=collection_name,
                     query_embedding=query_embedding,
-                    top_k=k,
+                    top_k=candidate_k,
                 )
 
                 for doc in results:
-                    all_documents.append(
+                    all_candidates.append(
                         RetrievedDocument(
                             text=doc["text"],
                             source=collection_name,
@@ -113,17 +158,23 @@ class Retriever:
                         )
                     )
 
-                logger.info(f"[Retriever] {collection_name}: {len(results)} docs encontrados")
+                logger.info(f"[Retriever] {collection_name}: {len(results)} candidatos")
 
             except Exception as e:
                 logger.error(f"[Retriever] Erro ao buscar em '{collection_name}': {e}")
-                # Continua com os outros datasets mesmo se um falhar
 
-        # Ordena todos os resultados por score (mais relevante primeiro)
-        all_documents.sort(key=lambda d: d.score, reverse=True)
+        if not all_candidates:
+            return []
 
-        logger.info(f"[Retriever] Total: {len(all_documents)} documentos relevantes encontrados")
-        return all_documents
+        # Aplica MMR para k resultados por coleção com diversidade garantida
+        # (total = k * n_collections documentos finais)
+        target_k = k * len(collections)
+        mmr_results = self._mmr_rerank(query_embedding, all_candidates, k=target_k)
+
+        logger.info(
+            f"[Retriever] MMR: {len(all_candidates)} candidatos → {len(mmr_results)} selecionados"
+        )
+        return mmr_results
 
     def retrieve_with_threshold(self, query: str, min_score: float = 0.3) -> list[RetrievedDocument]:
         """

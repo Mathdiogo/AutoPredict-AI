@@ -69,28 +69,39 @@ def _build_prompt(query: str, documents: list[RetrievedDocument]) -> str:
     context = "\n".join(context_blocks)
 
     # ── Prompt final ──────────────────────────────────────────────
-    prompt = f"""Você é AutoPredict AI, um especialista em diagnóstico e manutenção preditiva de veículos.
-Sua função é ajudar técnicos e engenheiros automotivos a identificar problemas e tomar decisões de manutenção.
+    prompt = f"""Você é AutoPredict AI, especialista em diagnóstico e manutenção preditiva de veículos.
+Sua resposta deve ser técnica, estruturada e baseada nos dados reais fornecidos.
 
-Você tem acesso a dados reais de 3 fontes diferentes:
-1. Histórico de manutenção de veículos
-2. Dados de sensores preditivos (temperatura, pressão, vibração, etc.)
-3. Banco de dados de falhas e diagnósticos técnicos
+Fontes de dados disponíveis:
+\u2022 \U0001f4cb Histórico de Manutenção \u2014 registros de serviços, peças e quilometragem
+\u2022 \U0001f4ca Sensores Preditivos \u2014 temperatura do motor, pressão dos pneus, espessura do freio
+\u2022 \u26a0\ufe0f Diagnóstico de Falhas \u2014 vibração, temperatura de exaustão, pressão de admissão
 
-DADOS DISPONÍVEIS SOBRE O CASO:
+--- EXEMPLOS DE COMO RESPONDER ---
+
+Pergunta: "Meu motor está superaquecendo, o que pode ser?"
+Resposta: Com base nos dados de sensores (\U0001f4ca), temperatura acima de 100°C indica superaquecimento.
+As causas mais comuns encontradas no histórico (\U0001f4cb) são: termostato defeituoso, falta de
+refrigerante e bomba d'água com falha. Recomendação: verificar nível do radiador imediatamente
+e agendar revisão do sistema de arrefecimento.
+
+Pergunta: "Com que frequência devo trocar o óleo?"
+Resposta: O histórico de manutenção (\U0001f4cb) indica troca a cada 5.000-10.000km dependendo do tipo
+de combustível. Veículos a diesel apresentam maior frequência de manutenção nos dados analisados.
+
+--- FIM DOS EXEMPLOS ---
+
+DADOS REAIS DO SISTEMA PARA ESTA CONSULTA:
 {context}
 
-PERGUNTA DO USUÁRIO:
-{query}
+PERGUNTA: {query}
 
-INSTRUÇÕES:
+INSTRUÇÕES PARA RESPOSTA:
 - Responda em português brasileiro
-- Base sua resposta PRINCIPALMENTE nos dados fornecidos acima
-- Indique de qual fonte cada informação veio (Manutenção, Sensores ou Falhas)
-- Se os dados sugerirem um problema específico, aponte a causa provável
-- Dê recomendações práticas e acionáveis
-- Se os dados forem insuficientes, diga claramente o que mais seria necessário saber
-- Nunca invente dados que não foram fornecidos no contexto
+- Estruture com causas, indicadores e recomendações práticas
+- Cite as fontes com os ícones (\U0001f4cb \U0001f4ca \u26a0\ufe0f)
+- Se dados forem insuficientes, indique o que seria necessário verificar
+- Seja direto e técnico; evite frases genéricas sem embasamento nos dados
 
 RESPOSTA:"""
 
@@ -129,12 +140,12 @@ class Generator:
                     "prompt": prompt,
                     "stream": False,        # False = aguarda resposta completa
                     "options": {
-                        "temperature": 0.3,  # Baixo = mais determinístico, menos criativo
+                        "temperature": 0.2,  # Mais determinístico = respostas mais consistentes
                         "top_p": 0.9,        # Controla diversidade dos tokens
-                        "num_predict": 1024, # Máximo de tokens na resposta
+                        "num_predict": 800,  # Máximo de tokens (limitado para evitar timeout no CPU)
                     },
                 },
-                timeout=120,  # 2 minutos de timeout (modelos locais podem ser lentos)
+                timeout=180,  # 3 minutos de timeout (llama3.2:3b gera ~100 tok/s no CPU)
             )
             response.raise_for_status()
 
@@ -205,13 +216,13 @@ class Generator:
                     "prompt": prompt,
                     "stream": True,
                     "options": {
-                        "temperature": 0.3,
+                        "temperature": 0.2,
                         "top_p": 0.9,
-                        "num_predict": 1024,
+                        "num_predict": 800,
                     },
                 },
                 stream=True,
-                timeout=120,
+                timeout=180,
             ) as response:
                 response.raise_for_status()
                 import json

@@ -37,15 +37,22 @@ class Settings(BaseSettings):
     ollama_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.2:3b"
 
+    # --- MLflow ---
+    mlflow_tracking_uri: str = "http://localhost:5001"
+
     # --- RAG ---
     # Quantos documentos buscar em CADA dataset por pergunta
     # Total de contexto = top_k_per_collection * 3 datasets
-    top_k_per_collection: int = 3
+    # Maior valor = mais contexto para o LLM, mas mais lento
+    top_k_per_collection: int = 5
 
     # --- Embeddings ---
     # Modelo que converte texto em vetores numéricos
-    # all-MiniLM-L6-v2: leve, rápido, 384 dimensões, ótimo para português
-    embedding_model: str = "all-MiniLM-L6-v2"
+    # paraphrase-multilingual-MiniLM-L12-v2:
+    #   - 384 dimensões (compatível com schema Milvus existente)
+    #   - Treinado em 50+ idiomas incluindo português
+    #   - Muito superior ao all-MiniLM-L6-v2 para textos em português
+    embedding_model: str = "paraphrase-multilingual-MiniLM-L12-v2"
     embedding_dim: int = 384  # Deve bater com o modelo acima
 
     class Config:

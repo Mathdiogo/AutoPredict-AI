@@ -12,6 +12,7 @@ pymilvus==2.4.0             # Cliente Python para o Milvus (banco vetorial)
 minio==7.2.7                # Cliente Python para o MinIO (data lake)
 psycopg2-binary==2.9.9      # Cliente Python para o PostgreSQL
 sqlalchemy==2.0.30          # ORM para facilitar queries no PostgreSQL
+marshmallow<4.0             # Pin: environs (dep do pymilvus) não é compatível com marshmallow>=4.0
 
 # --- IA / ML ---
 # sentence-transformers converte texto em vetores numéricos (embeddings)
@@ -22,6 +23,12 @@ torch==2.3.1                # Backend do sentence-transformers (CPU por padrão)
 numpy==1.26.4               # Operações com arrays (usado nos embeddings)
 pandas==2.2.2               # Manipulação dos datasets CSV
 
+# --- Machine Learning (Sprint 4 / AC1) ---
+scikit-learn==1.5.0         # Logistic Regression, Random Forest, métricas
+xgboost==2.1.1              # Gradient Boosting — modelo mais forte
+mlflow==2.13.0              # Tracking de experimentos + Model Registry
+                            # Artefatos salvos no servidor MLflow via HTTP (--serve-artifacts)
+
 # --- Configuração & Utilitários ---
 pydantic==2.7.1             # Validação de dados (schemas de request/response)
 pydantic-settings==2.3.1    # Lê configurações do .env automaticamente
@@ -29,4 +36,4 @@ python-dotenv==1.0.1        # Carrega variáveis do arquivo .env
 requests==2.32.3            # Chamadas HTTP (para falar com o Ollama)
 
 # --- Frontend ---
-gradio==4.36.1              # Cria a interface web do chatbot com poucas linhas
+gradio==4.44.1              # Interface web do chatbot (4.44.1 compatível com huggingface_hub >= 0.24)

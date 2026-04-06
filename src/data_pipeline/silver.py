@@ -17,6 +17,7 @@
 
 import io
 import logging
+import re
 import pandas as pd
 from src.database.minio_client import MinIOClient
 from src.database.postgres_client import PostgresClient
@@ -37,7 +38,7 @@ def _clean_vehicle_maintenance(df: pd.DataFrame) -> pd.DataFrame:
     df = df.dropna(how="all")
 
     # Garante que colunas obrigatórias existam (trata KeyError graciosamente)
-    required_cols = {"vehicle_id", "service_type"}
+    required_cols = {"vehicle_model", "need_maintenance"}
     existing = set(df.columns)
     missing = required_cols - existing
     if missing:
@@ -69,21 +70,27 @@ def _clean_vehicle_maintenance(df: pd.DataFrame) -> pd.DataFrame:
 def _clean_car_predictive(df: pd.DataFrame) -> pd.DataFrame:
     """
     Dataset 2: Car Predictive Maintenance Data
-    Colunas típicas: vehicle_id, engine_temp, oil_pressure, vibration,
-                     speed, fuel_consumption, failure_flag
+    Colunas reais (cars_hyundai.csv): Engine Temperature (°C),
+    Brake Pad Thickness (mm), Tire Pressure (PSI), Maintenance Type, Anomaly Indication
     """
-    df.columns = [c.strip().lower().replace(" ", "_") for c in df.columns]
+    # Sanitização extendida: remove caracteres especiais (°, (), %) além de espaços
+    df.columns = [
+        re.sub(r'[^a-z0-9_]', '', c.strip().lower().replace(' ', '_')).strip('_')
+        for c in df.columns
+    ]
     df = df.dropna(how="all").drop_duplicates()
 
-    # Converte colunas numéricas de sensores
+    # Converte colunas numéricas de sensores (nomes após sanitização)
     sensor_cols = [
-        "engine_temp", "engine_temperature",
+        "engine_temp", "engine_temperature", "engine_temperature_c",
         "oil_pressure",
         "vibration",
         "speed", "vehicle_speed",
         "fuel_consumption",
         "rpm", "engine_rpm",
         "coolant_temp", "coolant_temperature",
+        "brake_pad_thickness_mm",
+        "tire_pressure_psi",
     ]
     for col in sensor_cols:
         if col in df.columns:
@@ -94,9 +101,11 @@ def _clean_car_predictive(df: pd.DataFrame) -> pd.DataFrame:
         df = df[(df["engine_temp"].isna()) | (df["engine_temp"].between(-50, 300))]
     if "engine_temperature" in df.columns:
         df = df[(df["engine_temperature"].isna()) | (df["engine_temperature"].between(-50, 300))]
+    if "engine_temperature_c" in df.columns:
+        df = df[(df["engine_temperature_c"].isna()) | (df["engine_temperature_c"].between(-50, 300))]
 
-    # Garante que failure_flag seja binário (0 ou 1)
-    for flag_col in ["failure_flag", "failure", "is_failure", "fault"]:
+    # Garante que failure_flag/anomaly_indication seja binário (0 ou 1)
+    for flag_col in ["failure_flag", "failure", "is_failure", "fault", "anomaly_indication"]:
         if flag_col in df.columns:
             df[flag_col] = df[flag_col].fillna(0).astype(int).clip(0, 1)
             break
@@ -148,9 +157,9 @@ CLEANERS = {
 }
 
 BRONZE_FILENAMES = {
-    "vehicle_maintenance": "vehicle_maintenance.csv",
-    "car_predictive": "car_predictive_maintenance.csv",
-    "engine_fault": "engine_fault_detection.csv",
+    "vehicle_maintenance": "vehicle_maintenance_data.csv",
+    "car_predictive": "cars_hyundai.csv",
+    "engine_fault": "engine_fault_detection_dataset.csv",
 }
 
 

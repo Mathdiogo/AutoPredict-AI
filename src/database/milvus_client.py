@@ -165,12 +165,12 @@ class MilvusClient:
         for hit in hits:
           metadata = {}
           try:
-            metadata = json.loads(hit.entity.get("metadata", "{}"))
-          except json.JSONDecodeError:
+            metadata = json.loads(hit.entity.get("metadata") or "{}")
+          except (json.JSONDecodeError, TypeError):
             pass
 
           documents.append({
-            "text": hit.entity.get("text", ""),
+            "text": hit.entity.get("text") or "",
             "source": collection_name,
             "metadata": metadata,
             "score": float(hit.score),  # Score de similaridade COSINE (0 a 1)

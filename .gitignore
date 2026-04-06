@@ -8,7 +8,6 @@ __pycache__/
 venv/
 
 # Dados (muito grandes para o Git)
-data/*.csv
 data/*.parquet
 data/*.json
 

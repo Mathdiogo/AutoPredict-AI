@@ -24,9 +24,9 @@ logger = logging.getLogger(__name__)
 
 # Mapeamento: nome do dataset → arquivo CSV esperado em ./data/
 DATASET_FILES = {
-    "vehicle_maintenance": "vehicle_maintenance.csv",
-    "car_predictive": "car_predictive_maintenance.csv",
-    "engine_fault": "engine_fault_detection.csv",
+    "vehicle_maintenance": "vehicle_maintenance_data.csv",
+    "car_predictive": "cars_hyundai.csv",
+    "engine_fault": "engine_fault_detection_dataset.csv",
 }
 
 

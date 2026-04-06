@@ -2,12 +2,13 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# O frontend precisa apenas do Gradio e requests
-RUN pip install --no-cache-dir gradio==4.36.1 requests==2.32.3
+# Gradio 5.x: sem problemas de HfFolder e sem localhost-check em Docker
+RUN pip install --no-cache-dir \
+    "gradio>=5.0,<6.0" \
+    requests==2.32.3
 
 COPY src/frontend/ ./src/frontend/
 
 EXPOSE 7860
 
-# server_name="0.0.0.0" permite acesso de fora do container
 CMD ["python", "src/frontend/app.py"]

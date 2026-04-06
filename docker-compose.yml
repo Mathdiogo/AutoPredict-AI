@@ -1,5 +1,10 @@
 version: '3.8'
 
+# Nome explícito do projeto Compose - garante que todos os recursos
+# (containers, volumes, redes) fiquem isolados com prefixo "autopredict_".
+# Isso evita qualquer conflito com outros projetos Docker no mesmo host.
+name: autopredict
+
 # ============================================================
 # AutoPredict AI - Docker Compose
 # ============================================================
@@ -143,6 +148,32 @@ services:
       - autopredict-network
 
   # ------------------------------------------------------------
+  # MLflow - Tracking de Experimentos ML (Sprint 4 / AC1)
+  # UI: http://localhost:5001
+  #
+  # Metadados (runs, experimentos): SQLite em volume local
+  # Artefatos (modelos pkl): volume local via --serve-artifacts
+  # Clientes acessam via HTTP → sem precisar de boto3/psycopg2 no container
+  # ------------------------------------------------------------
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.13.0
+    container_name: autopredict-mlflow
+    ports:
+      - "5001:5000"
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri sqlite:////mlflow/mlflow.db
+      --artifacts-destination /mlflow/artifacts
+      --serve-artifacts
+    volumes:
+      - mlflow_data:/mlflow
+    networks:
+      - autopredict-network
+    restart: unless-stopped
+
+  # ------------------------------------------------------------
   # FastAPI - Backend (API REST que orquestra tudo)
   # Docs interativas: http://localhost:8000/docs
   # ------------------------------------------------------------
@@ -162,6 +193,7 @@ services:
       MILVUS_PORT: 19530
       OLLAMA_URL: http://ollama:11434
       OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2:3b}
+      MLFLOW_TRACKING_URI: http://mlflow:5000
     volumes:
       - ./src:/app/src    # Hot reload: edições no código refletem imediatamente
       - ./data:/app/data  # Datasets ficam acessíveis no container
@@ -204,6 +236,7 @@ volumes:
   etcd_data:
   milvus_data:
   ollama_data:
+  mlflow_data:
 
 # ============================================================
 # Rede interna para os containers se comunicarem pelo nome
