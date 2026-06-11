@@ -35,9 +35,35 @@ class Settings(BaseSettings):
 
     # --- Ollama (LLM) ---
     ollama_url: str = "http://localhost:11434"
-    ollama_model: str = "llama3.2:3b"
+    ollama_model: str = "llama3.2:1b"  # Modelo mais leve para evitar crashes
+
+    # --- Cloud LLMs (Opcional - para comparação) ---
+    openai_api_key: str = ""  # Opcional: sk-...
+    anthropic_api_key: str = ""  # Opcional: sk-ant-...
+    groq_api_key: str = ""  # Opcional: gsk_... (GRATUITO!)
+    
+    # --- Model Pool (Modelos disponíveis) ---
+    available_models: list[str] = [
+        "llama3.2:1b",
+        "llama3.2:3b", 
+        "mistral:7b",
+        "qwen2.5:3b",
+        "gpt-4",
+        "gpt-3.5-turbo",
+        "claude-3-opus",
+        "claude-3-sonnet",
+        "groq-llama-3.1-70b"
+    ]
+    
+    # --- Governança e Tokens ---
+    max_tokens_per_request: int = 1000  # Limite máximo de tokens por requisição
+    default_temperature: float = 0.2
+    default_top_p: float = 0.9
+    default_top_k: int = 40
 
     # --- MLflow ---
+    # Dentro do container: http://mlflow:5000
+    # Fora do container (localhost): http://localhost:5001
     mlflow_tracking_uri: str = "http://localhost:5001"
 
     # --- RAG ---

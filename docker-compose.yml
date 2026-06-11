@@ -1,22 +1,11 @@
-version: '3.8'
-
 # Nome explícito do projeto Compose - garante que todos os recursos
 # (containers, volumes, redes) fiquem isolados com prefixo "autopredict_".
 # Isso evita qualquer conflito com outros projetos Docker no mesmo host.
 name: autopredict
 
-# ============================================================
-# AutoPredict AI - Docker Compose
-# ============================================================
-# Este arquivo sobe TODOS os serviços com um só comando:
-#   docker compose up -d
-#
-# Para ver os logs:
-#   docker compose logs -f
-#
-# Para parar tudo:
-#   docker compose down
-# ============================================================
+
+
+
 
 services:
 
@@ -136,6 +125,12 @@ services:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        limits:
+          memory: 6G  # Aumenta limite para 6GB
+        reservations:
+          memory: 3G  # Garante mínimo de 3GB
     # --- Descomente para usar GPU NVIDIA ---
     # deploy:
     #   resources:
@@ -192,11 +187,16 @@ services:
       MILVUS_HOST: milvus
       MILVUS_PORT: 19530
       OLLAMA_URL: http://ollama:11434
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2:3b}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2:1b}
       MLFLOW_TRACKING_URI: http://mlflow:5000
+      # Cloud LLM API Keys (Opcional)
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     volumes:
       - ./src:/app/src    # Hot reload: edições no código refletem imediatamente
       - ./data:/app/data  # Datasets ficam acessíveis no container
+      - ./docs:/app/docs  # Documentação de governança acessível no container
     depends_on:
       postgres:
         condition: service_healthy

@@ -17,7 +17,7 @@ import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from src.api.routes import chat, health
+from src.api.routes import chat, health, metadata, models
 
 # Configura logging
 logging.basicConfig(
@@ -84,7 +84,8 @@ app.add_middleware(
 # ── Registra as rotas ─────────────────────────────────────────
 app.include_router(chat.router)
 app.include_router(health.router)
-
+app.include_router(metadata.router)
+app.include_router(models.router)
 
 # ── Rota raiz ─────────────────────────────────────────────────
 @app.get("/", tags=["Root"])

@@ -22,6 +22,8 @@ O AutoPredict AI é um chatbot especializado em manutenção de veículos. Ele u
 10. [Comandos Úteis](#10-comandos-úteis)
 11. [Solução de Problemas](#11-solução-de-problemas)
 
+> 📚 **Documentação Detalhada de Governança:** Para documentação completa das camadas Bronze, Silver e Gold, consulte [`docs/governance/`](docs/governance/README.md) ou acesse via MLflow (experimento `AutoPredict-Governance`).
+
 ---
 
 ## 1. Pré-requisitos
@@ -573,6 +575,9 @@ Sprints de **2 semanas**. Critério de aceite: funcionalidade demonstrável e te
 
 ## 9. Governança de Dados
 
+> 📚 **Documentação Completa:** Para documentação detalhada de cada camada (Bronze, Silver, Gold), consulte [`docs/governance/`](docs/governance/README.md).  
+> 🔗 **Versionamento no MLflow:** Execute `.\register_governance.ps1` para registrar os docs no MLflow e ter rastreabilidade completa.
+
 ### 9.1 Princípios Gerais
 
 O AutoPredict AI adota os seguintes princípios de governança:
@@ -648,6 +653,43 @@ O `docker-compose.yml` define `name: autopredict`, o que garante que todos os re
 | Rede | `autopredict_autopredict-network` |
 | Volume MinIO | `autopredict_minio_data` |
 | Volume Milvus | `autopredict_milvus_data` |
+
+---
+
+### 9.7 Documentação Detalhada de Governança
+
+A documentação completa das camadas Medallion está disponível em **3 documentos separados** em [`docs/governance/`](docs/governance/):
+
+| Documento | Conteúdo |
+|---|---|
+| [`bronze_layer.md`](docs/governance/bronze_layer.md) | Ingestão de dados brutos, catálogo de datasets, políticas de imutabilidade |
+| [`silver_layer.md`](docs/governance/silver_layer.md) | Limpeza de dados, normalização, transformações aplicadas, validações |
+| [`gold_layer.md`](docs/governance/gold_layer.md) | Chunking, embeddings, indexação no Milvus, uso em RAG, estatísticas |
+
+#### Registrar Documentação no MLflow
+
+Para versionar e rastrear a documentação junto com os experimentos de ML:
+
+**Windows (PowerShell):**
+```powershell
+.\register_governance.ps1
+```
+
+**Ou manualmente:**
+```bash
+docker exec -w /app autopredict-api python -m src.data_pipeline.register_governance_docs
+```
+
+Depois, acesse:
+- **MLflow UI:** http://localhost:5001
+- **Experimento:** `AutoPredict-Governance`
+- **Artefatos:** Baixe os documentos na aba "Artifacts > governance/"
+
+Isso cria uma run no MLflow com:
+- Tags de versão e data de atualização
+- Métricas de contagem de linhas/palavras por documento
+- Artefatos: 4 arquivos markdown (bronze, silver, gold, README)
+- Rastreabilidade completa de mudanças na documentação
 | Volume PostgreSQL | `autopredict_postgres_data` |
 | Volume MLflow | `autopredict_mlflow_data` |
 | Volume Ollama | `autopredict_ollama_data` |

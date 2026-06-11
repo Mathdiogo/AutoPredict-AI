@@ -43,9 +43,15 @@ class RAGResponse:
     sources: list[dict] = field(default_factory=list)
     model: str = ""
     total_docs_retrieved: int = 0
+    inference_time: float = 0.0
+    tokens_used: int = 0
+    collections_used: list[str] = field(default_factory=list)
+    provider: str = ""
+    generation_params: dict = field(default_factory=dict)
 
     @classmethod
-    def from_generator_response(cls, gen_response: GeneratorResponse) -> "RAGResponse":
+    def from_generator_response(cls, gen_response: GeneratorResponse, 
+                                collections_used: list[str]) -> "RAGResponse":
         """Converte GeneratorResponse para o formato da API."""
         sources = []
         for doc in gen_response.sources:
@@ -63,6 +69,11 @@ class RAGResponse:
             sources=sources,
             model=gen_response.model_used,
             total_docs_retrieved=len(gen_response.sources),
+            inference_time=gen_response.inference_time,
+            tokens_used=gen_response.tokens_used,
+            collections_used=collections_used,
+            provider=gen_response.provider,
+            generation_params=gen_response.generation_params,
         )
 
 
@@ -76,13 +87,19 @@ class RAGPipeline:
         self.retriever = Retriever()
         self.generator = Generator()
 
-    def query(self, question: str, min_score: float = 0.25) -> RAGResponse:
+    def query(self, question: str, min_score: float = 0.25, model: str | None = None,
+              temperature: float | None = None, top_p: float | None = None, 
+              top_k: int | None = None) -> RAGResponse:
         """
         Responde uma pergunta usando RAG multi-dataset.
 
         Args:
             question: Pergunta em texto natural
             min_score: Score mínimo de relevância para incluir documentos
+            model: Modelo LLM a usar (None = padrão do config)
+            temperature: Temperatura para geração
+            top_p: Parâmetro top_p para amostragem
+            top_k: Parâmetro top_k para amostragem
 
         Returns:
             RAGResponse com a resposta e os documentos usados
@@ -99,19 +116,26 @@ class RAGPipeline:
             logger.warning("[RAG] Nenhum documento recuperado. Respondendo sem contexto.")
             # Se não encontrou nada, ainda tenta responder (o LLM usará seu conhecimento geral)
             documents = self.retriever.retrieve(question)
+        
+        # Extrai as collections que foram usadas
+        collections_used = list(set(doc.source for doc in documents))
 
         # Passo 2: Gera resposta com o LLM
         gen_response = self.generator.generate(
             query=question,
             documents=documents,
+            model=model,
+            temperature=temperature,
+            top_p=top_p,
+            top_k=top_k,
         )
 
         # Converte para o formato da API
-        result = RAGResponse.from_generator_response(gen_response)
-        logger.info(f"[RAG] Resposta gerada ({result.total_docs_retrieved} docs de contexto)")
+        result = RAGResponse.from_generator_response(gen_response, collections_used)
+        logger.info(f"[RAG] Resposta gerada ({result.total_docs_retrieved} docs, {result.tokens_used} tokens, {result.inference_time:.2f}s)")
         return result
 
-    def stream_query(self, question: str, min_score: float = 0.25):
+    def stream_query(self, question: str, min_score: float = 0.25, model: str | None = None):
         """
         Versão com streaming: retorna tokens conforme são gerados.
         Ideal para o Gradio mostrar a resposta "digitando".
@@ -131,6 +155,7 @@ class RAGPipeline:
         yield from self.generator.stream_generate(
             query=question,
             documents=documents,
+            model=model,  # Passa o modelo escolhido
         )
 
 

@@ -54,6 +54,7 @@ SOURCE_LABELS = {
     "vehicle_maintenance": "📋 Histórico de Manutenção",
     "car_predictive": "📊 Dados de Sensores Preditivos",
     "engine_fault": "⚠️ Diagnóstico de Falhas",
+    "system_info": "🤖 Informações do Sistema",
 }
 
 
@@ -111,7 +112,7 @@ class Retriever:
 
     def retrieve(self, query: str, top_k_per_collection: int | None = None) -> list["RetrievedDocument"]:
         """
-        Busca documentos relevantes nos 3 datasets para uma pergunta.
+        Busca documentos relevantes nos 4 datasets para uma pergunta.
 
         Args:
             query: A pergunta do usuário em texto natural
@@ -120,7 +121,7 @@ class Retriever:
 
         Returns:
             Lista de documentos ordenados por relevância,
-            vindos dos 3 datasets.
+            vindos dos 4 datasets (incluindo system_info).
         """
         settings = self.settings
         k = top_k_per_collection or settings.top_k_per_collection
@@ -135,12 +136,19 @@ class Retriever:
             settings.milvus_collection_maintenance,
             settings.milvus_collection_predictive,
             settings.milvus_collection_engine,
+            "system_info",  # Collection com informações do próprio sistema
         ]
 
         all_candidates: list[RetrievedDocument] = []
 
         for collection_name in collections:
             try:
+                # Verifica se a collection existe usando utility do pymilvus
+                from pymilvus import utility
+                if not utility.has_collection(collection_name):
+                    logger.warning(f"[Retriever] Collection '{collection_name}' não existe. Pulando...")
+                    continue
+                    
                 results = self.milvus.search(
                     collection_name=collection_name,
                     query_embedding=query_embedding,

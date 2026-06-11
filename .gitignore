@@ -13,3 +13,6 @@ data/*.json
 
 # Docker
 .docker/
+
+# Guia pessoal de apresentação
+GUIA_APRESENTACAO.md

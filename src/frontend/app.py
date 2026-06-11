@@ -56,6 +56,49 @@ def get_example_questions() -> list[str]:
     ]
 
 
+def get_available_models() -> tuple[list[tuple[str, str]], str]:
+    """
+    Busca modelos disponíveis na API com retry.
+    
+    Returns:
+        (choices, default_value)
+        choices: lista de tuplas (display_name, model_name) para o Dropdown
+        default_value: nome do modelo padrão
+    """
+    import time
+    
+    # Tenta 5 vezes antes de usar fallback
+    for attempt in range(5):
+        try:
+            print(f"[Frontend] Tentativa {attempt + 1}/5: Buscando modelos em {API_URL}/models...", flush=True)
+            resp = requests.get(f"{API_URL}/models", timeout=10)
+            
+            if resp.status_code == 200:
+                data = resp.json()
+                models = data.get("models", [])
+                default = data.get("default_model", "llama3.2:3b")
+                
+                # Formata choices: (label, value)
+                choices = [(m["display_name"], m["name"]) for m in models]
+                
+                print(f"[Frontend] ✅ Sucesso! {len(choices)} modelos carregados:", flush=True)
+                for display_name, _ in choices[:3]:  # Mostra primeiros 3
+                    print(f"  - {display_name}", flush=True)
+                if len(choices) > 3:
+                    print(f"  ... e mais {len(choices) - 3} modelos", flush=True)
+                
+                return choices, default
+                
+        except Exception as e:
+            print(f"[Frontend] ❌ Tentativa {attempt + 1} falhou: {e}", flush=True)
+            if attempt < 4:  # Não espera na última tentativa
+                time.sleep(3)  # Aguarda 3s antes de tentar novamente
+    
+    # Fallback se API não responder após todas as tentativas
+    print("[Frontend] ⚠️  Usando fallback: 1 modelo apenas (API não respondeu)", flush=True)
+    return [("Llama 3.2 3B (Ollama - Local)", "llama3.2:3b")], "llama3.2:3b"
+
+
 def _build_status_html(status: dict | None) -> str:
     """Gera o HTML do banner de status dos serviços."""
     if status is None:
@@ -121,7 +164,7 @@ def _build_metric_cards(status: dict | None) -> str:
     </div>"""
 
 
-def chat_with_api(message: str, history: list, show_sources: bool):
+def chat_with_api(message: str, history: list, show_sources: bool, selected_model: str):
     """
     Envia a pergunta para a API com streaming real-time.
     É um GENERATOR: faz yield de estados parciais enquanto o LLM responde.
@@ -130,6 +173,7 @@ def chat_with_api(message: str, history: list, show_sources: bool):
         message: Texto digitado pelo usuário
         history: Histórico da conversa (list of [user, assistant] pairs)
         show_sources: Se True, busca e exibe os documentos fonte ao final
+        selected_model: Modelo LLM a usar (ex: 'llama3.2:3b', 'gpt-4', 'claude-3-opus')
 
     Yields:
         (history_atualizado, sources_info, input_limpo)
@@ -147,10 +191,61 @@ def chat_with_api(message: str, history: list, show_sources: bool):
     sources_info = ""
 
     try:
-        # ── Streaming via GET /chat/stream ──────────────────────────────
+        # ── Streaming via GET /chat/stream (agora sem model) ───────────────
+        # NOTA: Streaming só funciona com Ollama, então usamos POST /chat para outros modelos
+        
+        # Detecta se é modelo cloud (sem streaming)
+        is_cloud = any(x in selected_model.lower() for x in ["gpt", "claude", "openai", "anthropic"])
+        
+        if is_cloud:
+            # Modelos cloud: usa POST /chat (sem streaming)
+            post_resp = requests.post(
+                f"{API_URL}/chat",
+                json={
+                    "question": message, 
+                    "min_score": 0.20, 
+                    "model": selected_model,
+                    "user_id": "gradio_user",  # ID padrão para usuário do frontend
+                    "top_p": 0.9,
+                    "top_k": 40,
+                    "temperature": 0.2,
+                },
+                timeout=200,
+            )
+            if post_resp.status_code == 200:
+                data = post_resp.json()
+                response_text = data.get("answer", "")
+                current_history[-1][1] = response_text
+                yield current_history, sources_info, ""
+                
+                # Busca fontes e métricas
+                if show_sources and data.get("sources"):
+                    metrics = data.get("metrics", {})
+                    lines = [
+                        f"**📊 Métricas de Governança**\n",
+                        f"- ⏱️ Tempo: `{metrics.get('inference_time_seconds', 0):.2f}s` | 🔢 Tokens: `{metrics.get('tokens_used', 0)}`",
+                        f"- 📚 Chunks: `{metrics.get('chunks_retrieved', 0)}` | 🗂️ Collections: `{', '.join(metrics.get('collections_used', []))}`",
+                        f"- 👤 User: `{metrics.get('user_id', 'N/A')}` | 🤖 Modelo: `{metrics.get('model_provider', '')}:{metrics.get('model_name', '')}`\n",
+                        f"**📄 Contexto usado** ({data['total_docs_retrieved']} documentos)\n"
+                    ]
+                    for i, src in enumerate(data["sources"], 1):
+                        score_pct = int(src["score"] * 100)
+                        lines.append(
+                            f"**{i}. {src['source_label']}** (relevância: {score_pct}%)\n"
+                            f"> {src['text'][:200]}...\n"
+                        )
+                    sources_info = "\n".join(lines)
+                    yield current_history, sources_info, ""
+            else:
+                response_text = f"❌ Erro na API: {post_resp.status_code} - {post_resp.text}"
+                current_history[-1][1] = response_text
+                yield current_history, sources_info, ""
+            return
+        
+        # Modelos Ollama: usa streaming
         with requests.get(
             f"{API_URL}/chat/stream",
-            params={"question": message, "min_score": 0.20},
+            params={"question": message, "min_score": 0.20, "model": selected_model},
             stream=True,
             timeout=200,
         ) as resp:
@@ -171,14 +266,27 @@ def chat_with_api(message: str, history: list, show_sources: bool):
             try:
                 src_resp = requests.post(
                     f"{API_URL}/chat",
-                    json={"question": message, "min_score": 0.20},
+                    json={
+                        "question": message, 
+                        "min_score": 0.20, 
+                        "model": selected_model,
+                        "user_id": "gradio_user",
+                        "top_p": 0.9,
+                        "top_k": 40,
+                        "temperature": 0.2,
+                    },
                     timeout=200,
                 )
                 if src_resp.status_code == 200:
                     data = src_resp.json()
                     if data.get("sources"):
+                        metrics = data.get("metrics", {})
                         lines = [
-                            f"**Contexto usado** ({data['total_docs_retrieved']} docs | Modelo: `{data['model']}`)\n"
+                            f"**📊 Métricas de Governança**\n",
+                            f"- ⏱️ Tempo: `{metrics.get('inference_time_seconds', 0):.2f}s` | 🔢 Tokens: `{metrics.get('tokens_used', 0)}`",
+                            f"- 📚 Chunks: `{metrics.get('chunks_retrieved', 0)}` | 🗂️ Collections: `{', '.join(metrics.get('collections_used', []))}`",
+                            f"- 👤 User: `{metrics.get('user_id', 'N/A')}` | 🤖 Modelo: `{metrics.get('model_provider', '')}:{metrics.get('model_name', '')}`\n",
+                            f"**📄 Contexto usado** ({data['total_docs_retrieved']} documentos)\n"
                         ]
                         for i, src in enumerate(data["sources"], 1):
                             score_pct = int(src["score"] * 100)
@@ -663,6 +771,16 @@ def build_interface() -> gr.Blocks:
                     value=False,
                     elem_classes="ap-checkbox",
                 )
+                
+                # Dropdown de seleção de modelo
+                model_choices, default_model = get_available_models()
+                model_selector = gr.Dropdown(
+                    label="🤖 Modelo LLM",
+                    choices=model_choices,
+                    value=default_model,
+                    elem_classes="ap-dropdown",
+                    info="Escolha entre modelos locais (Ollama) ou cloud (OpenAI/Anthropic)",
+                )
 
             # Coluna de fontes (menor)
             with gr.Column(scale=1, min_width=220):
@@ -731,13 +849,13 @@ def build_interface() -> gr.Blocks:
         # ── Eventos ──────────────────────────────────────────────────────
         send_btn.click(
             fn=chat_with_api,
-            inputs=[question_input, chatbot, show_sources],
+            inputs=[question_input, chatbot, show_sources, model_selector],
             outputs=[chatbot, sources_display, question_input],
         )
 
         question_input.submit(
             fn=chat_with_api,
-            inputs=[question_input, chatbot, show_sources],
+            inputs=[question_input, chatbot, show_sources, model_selector],
             outputs=[chatbot, sources_display, question_input],
         )
 

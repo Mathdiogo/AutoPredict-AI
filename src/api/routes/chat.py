@@ -24,23 +24,32 @@ def chat(request: ChatRequest):
       1. Recebe a pergunta
       2. Busca documentos relevantes nos 3 datasets (Milvus)
       3. Envia pergunta + contexto para o LLM (Ollama)
-      4. Retorna resposta + fontes usadas
+      4. Retorna resposta + fontes usadas + métricas de governança
 
     Exemplo de request:
     ```json
     {
       "question": "Quais falhas são mais comuns em motores a diesel?",
-      "min_score": 0.25
+      "min_score": 0.25,
+      "user_id": "user123",
+      "model": "llama3.2:3b",
+      "temperature": 0.2,
+      "top_p": 0.9,
+      "top_k": 40
     }
     ```
     """
-    logger.info(f"[API] POST /chat - '{request.question[:60]}'")
+    logger.info(f"[API] POST /chat - '{request.question[:60]}' (user: {request.user_id or 'anonymous'})")
 
     try:
         pipeline = get_pipeline()
         result: RAGResponse = pipeline.query(
             question=request.question,
             min_score=request.min_score,
+            model=request.model,
+            temperature=request.temperature,
+            top_p=request.top_p,
+            top_k=request.top_k,
         )
 
         # Converte os sources para o schema Pydantic
@@ -54,6 +63,21 @@ def chat(request: ChatRequest):
             )
             for s in result.sources
         ]
+        
+        # Cria métricas de governança
+        from src.api.schemas.chat import InferenceMetrics
+        metrics = InferenceMetrics(
+            inference_time_seconds=result.inference_time,
+            tokens_used=result.tokens_used,
+            chunks_retrieved=result.total_docs_retrieved,
+            collections_used=result.collections_used,
+            user_id=request.user_id,
+            model_provider=result.provider,
+            model_name=result.model.split(":")[-1],
+            top_p=result.generation_params.get("top_p", request.top_p or 0.9),
+            top_k=result.generation_params.get("top_k", request.top_k or 40),
+            temperature=result.generation_params.get("temperature", request.temperature or 0.2),
+        )
 
         return ChatResponse(
             answer=result.answer,
@@ -61,6 +85,7 @@ def chat(request: ChatRequest):
             sources=sources,
             model=result.model,
             total_docs_retrieved=result.total_docs_retrieved,
+            metrics=metrics,
         )
 
     except Exception as e:
@@ -73,14 +98,23 @@ def chat(request: ChatRequest):
     tags=["Chat"],
     summary="Chat com streaming (resposta em tempo real)",
 )
-def chat_stream(question: str, min_score: float = 0.25):
+def chat_stream(
+    question: str, 
+    min_score: float = 0.25, 
+    model: str | None = None
+):
     """
     Versão streaming do chat.
     Os tokens são enviados conforme são gerados pelo LLM.
 
+    Parâmetros:
+        question: Pergunta do usuário
+        min_score: Score mínimo de relevância (padrão: 0.25)
+        model: Modelo LLM a usar (padrão: llama3.2:1b do config)
+
     Use assim no frontend:
     ```js
-    const resp = await fetch('/chat/stream?question=...')
+    const resp = await fetch('/chat/stream?question=...&model=llama3.2:3b')
     const reader = resp.body.getReader()
     // lê tokens um por um
     ```
@@ -92,7 +126,7 @@ def chat_stream(question: str, min_score: float = 0.25):
 
     def generate():
         try:
-            for token in pipeline.stream_query(question, min_score=min_score):
+            for token in pipeline.stream_query(question, min_score=min_score, model=model):
                 yield token
         except Exception as e:
             logger.error(f"[API] Erro no streaming: {e}")

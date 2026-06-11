@@ -1,0 +1,47 @@
+========================================
+PERGUNTAS PARA COPIAR NO VÍDEO
+========================================
+
+COPIE E COLE ESTAS PERGUNTAS NO FRONTEND DURANTE A GRAVAÇÃO
+(uma por vez, claro!)
+
+========================================
+PERGUNTA 1: Quem é você?
+========================================
+
+Quem é você?
+
+========================================
+PERGUNTA 2: Modelos ML
+========================================
+
+Quais modelos de machine learning foram treinados e quais métricas foram utilizadas?
+
+========================================
+PERGUNTA 3: Pré-processamento
+========================================
+
+Qual foi o pré-processamento realizado nos dados?
+
+========================================
+PERGUNTA BÔNUS (opcional): Domínio Técnico
+========================================
+
+Quais são as causas mais comuns de superaquecimento do motor?
+
+========================================
+REQUEST JSON PARA SWAGGER (POST /chat)
+========================================
+
+{
+  "question": "O que causa vibração no motor?",
+  "user_id": "video_demo",
+  "model": "llama3.2:3b",
+  "top_p": 0.9,
+  "top_k": 40,
+  "temperature": 0.2
+}
+
+========================================
+DICA: Não esqueça de ativar "Mostrar fontes" no frontend!
+========================================
