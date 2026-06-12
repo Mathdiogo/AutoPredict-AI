@@ -128,17 +128,13 @@ services:
     deploy:
       resources:
         limits:
-          memory: 6G  # Aumenta limite para 6GB
+          memory: 8G
         reservations:
-          memory: 3G  # Garante mínimo de 3GB
-    # --- Descomente para usar GPU NVIDIA ---
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: 1
-    #           capabilities: [gpu]
+          memory: 2G
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     networks:
       - autopredict-network
 

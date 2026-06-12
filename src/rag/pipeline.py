@@ -31,6 +31,7 @@ import logging
 from dataclasses import dataclass, field
 from src.rag.retriever import Retriever, RetrievedDocument
 from src.rag.generator import Generator, GeneratorResponse
+from src.rag.system_queries import detect_system_query, get_system_response
 
 logger = logging.getLogger(__name__)
 
@@ -106,6 +107,24 @@ class RAGPipeline:
         """
         logger.info(f"[RAG] Nova query: '{question[:80]}'")
 
+        # Perguntas sobre o sistema → resposta direta, sem RAG veicular
+        system_intent = detect_system_query(question)
+        if system_intent:
+            answer = get_system_response(system_intent)
+            logger.info(f"[RAG] Pergunta meta detectada ({system_intent}) — resposta direta")
+            return RAGResponse(
+                answer=answer,
+                query=question,
+                sources=[],
+                model="system:direct",
+                total_docs_retrieved=0,
+                inference_time=0.0,
+                tokens_used=0,
+                collections_used=[],
+                provider="system",
+                generation_params={},
+            )
+
         # Passo 1: Recupera documentos relevantes dos 3 datasets
         documents = self.retriever.retrieve_with_threshold(
             query=question,
@@ -144,6 +163,14 @@ class RAGPipeline:
             for token in pipeline.stream_query("Meu motor esquenta muito"):
                 print(token, end="")
         """
+        system_intent = detect_system_query(question)
+        if system_intent:
+            answer = get_system_response(system_intent)
+            chunk_size = 40
+            for i in range(0, len(answer), chunk_size):
+                yield answer[i : i + chunk_size]
+            return
+
         documents = self.retriever.retrieve_with_threshold(
             query=question,
             min_score=min_score,

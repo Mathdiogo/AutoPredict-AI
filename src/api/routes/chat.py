@@ -143,13 +143,13 @@ def get_examples():
     """
     return {
         "examples": [
+            "Quem é você?",
+            "Quais modelos foram treinados e quais métricas foram usadas?",
+            "Qual o pré-processamento realizado nos dados?",
             "Quais são as causas mais comuns de superaquecimento do motor?",
             "O que significa o código de falha P0300?",
             "Meu carro tem 80.000km, o que devo verificar preventivamente?",
             "Quando devo trocar o óleo do motor?",
             "Quais sensores indicam desgaste no sistema de freios?",
-            "Como a pressão baixa do óleo afeta o motor?",
-            "Quais falhas são mais comuns em veículos com mais de 100.000km?",
-            "O que causa vibração excessiva no veículo?",
         ]
     }

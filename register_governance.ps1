@@ -36,12 +36,25 @@ if ($apiContainer -ne "autopredict-api") {
 }
 Write-Host "   ✅ API está rodando" -ForegroundColor Green
 
-# Executar script de registro
+# Executar script de registro (MLflow)
 Write-Host ""
-Write-Host "4. Registrando documentação..." -ForegroundColor Yellow
+Write-Host "4. Registrando documentação no MLflow..." -ForegroundColor Yellow
 Write-Host ""
 
 docker exec -w /app autopredict-api python -m src.data_pipeline.register_governance_docs
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host ""
+    Write-Host "❌ Erro ao registrar documentação no MLflow" -ForegroundColor Red
+    exit 1
+}
+
+# Upload para MinIO (bucket governance)
+Write-Host ""
+Write-Host "5. Enviando governança para o MinIO..." -ForegroundColor Yellow
+Write-Host ""
+
+docker exec -w /app autopredict-api python -m src.data_pipeline.upload_governance_to_minio
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host ""
@@ -49,12 +62,14 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host "  ✅ CONCLUÍDO COM SUCESSO!" -ForegroundColor Green
     Write-Host "========================================" -ForegroundColor Green
     Write-Host ""
-    Write-Host "📊 Acesse o MLflow UI:" -ForegroundColor Cyan
+    Write-Host "📊 MLflow UI:" -ForegroundColor Cyan
     Write-Host "   http://localhost:5001" -ForegroundColor White
-    Write-Host ""
-    Write-Host "📂 Navegue até:" -ForegroundColor Cyan
     Write-Host "   Experimento: AutoPredict-Governance" -ForegroundColor White
-    Write-Host "   Aba: Artifacts > governance/" -ForegroundColor White
+    Write-Host ""
+    Write-Host "🗄️  MinIO Console:" -ForegroundColor Cyan
+    Write-Host "   http://localhost:9001" -ForegroundColor White
+    Write-Host "   Bucket: governance → pasta governance/" -ForegroundColor White
+    Write-Host "   Login: minioadmin / minioadmin123" -ForegroundColor White
     Write-Host ""
 } else {
     Write-Host ""

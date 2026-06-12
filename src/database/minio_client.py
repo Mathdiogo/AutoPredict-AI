@@ -38,31 +38,42 @@ class MinIOClient:
             settings.minio_bucket_bronze,
             settings.minio_bucket_silver,
             settings.minio_bucket_gold,
+            settings.minio_bucket_governance,
         ]
         self._ensure_buckets_exist()
 
     def _ensure_buckets_exist(self):
-        """Cria os buckets Bronze, Silver e Gold se não existirem."""
+        """Cria os buckets (Bronze, Silver, Gold, Governance) se não existirem."""
         for bucket in self.buckets:
             if not self.client.bucket_exists(bucket):
                 self.client.make_bucket(bucket)
                 logger.info(f"Bucket '{bucket}' criado no MinIO")
 
     def upload_file(self, bucket: str, object_name: str, file_path: str) -> bool:
-        """
-        Faz upload de um arquivo local para um bucket.
-
-        Args:
-            bucket: Nome do bucket (bronze, silver ou gold)
-            object_name: Caminho dentro do bucket (ex: "vehicle_maintenance.csv")
-            file_path: Caminho local do arquivo
-        """
+        """Faz upload de um arquivo local para um bucket."""
         try:
             self.client.fput_object(bucket, object_name, file_path)
             logger.info(f"Upload: {file_path} → {bucket}/{object_name}")
             return True
         except S3Error as e:
             logger.error(f"Erro no upload para MinIO: {e}")
+            return False
+
+    def upload_text(self, bucket: str, object_name: str, content: str, content_type: str = "text/markdown") -> bool:
+        """Faz upload de conteúdo textual (markdown, json, etc.) para um bucket."""
+        try:
+            data = content.encode("utf-8")
+            self.client.put_object(
+                bucket,
+                object_name,
+                data=io.BytesIO(data),
+                length=len(data),
+                content_type=content_type,
+            )
+            logger.info(f"Upload texto: → {bucket}/{object_name}")
+            return True
+        except S3Error as e:
+            logger.error(f"Erro no upload de texto para MinIO: {e}")
             return False
 
     def upload_dataframe(self, bucket: str, object_name: str, df_csv: str) -> bool:

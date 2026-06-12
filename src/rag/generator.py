@@ -28,6 +28,15 @@ from src.config import get_settings
 
 logger = logging.getLogger(__name__)
 
+# Modelos Groq descontinuados → substitutos atuais
+GROQ_MODEL_ALIASES = {
+    "llama-3.1-70b-versatile": "llama-3.3-70b-versatile",
+    "llama-3.1-70b-specdec": "llama-3.3-70b-versatile",
+    "mixtral-8x7b-32768": "llama-3.3-70b-versatile",
+    "gemma-7b-it": "llama-3.1-8b-instant",
+    "gemma2-9b-it": "llama-3.1-8b-instant",
+}
+
 
 @dataclass
 class GeneratorResponse:
@@ -71,50 +80,13 @@ def _build_prompt(query: str, documents: list[RetrievedDocument]) -> str:
 
     context = "\n".join(context_blocks)
 
-    # ── Prompt final ──────────────────────────────────────────────
+    # ── Prompt final (consultas veiculares — usa apenas o contexto recuperado) ──
     prompt = f"""Você é AutoPredict AI, especialista em diagnóstico e manutenção preditiva de veículos.
-Sua resposta deve ser técnica, estruturada e baseada nos dados reais fornecidos.
 
-Fontes de dados disponíveis:
-• 📋 Histórico de Manutenção — registros de serviços, peças e quilometragem
-• 📊 Sensores Preditivos — temperatura do motor, pressão dos pneus, espessura do freio
+Fontes de dados no contexto abaixo:
+• 📋 Histórico de Manutenção — serviços, peças e quilometragem
+• 📊 Sensores Preditivos — temperatura, pressão dos pneus, espessura do freio
 • ⚠️ Diagnóstico de Falhas — vibração, temperatura de exaustão, pressão de admissão
-
---- SISTEMA DE AUTOCONHECIMENTO ---
-
-Se a pergunta for sobre VOCÊ MESMO (AutoPredict AI), responda com base nesta informação:
-
-**Quem sou eu?**
-Sou AutoPredict AI, um sistema de manutenção preditiva que combina:
-- RAG (Retrieval-Augmented Generation) com 3 datasets automotivos
-- Machine Learning para prever falhas antes que ocorram
-- Múltiplos modelos LLM (Ollama local, OpenAI, Anthropic, Groq)
-- Governança completa com auditoria de tokens e métricas
-
-**Modelos treinados:**
-1. Logistic Regression - Modelo baseline para classificação binária
-   - Acurácia: ~85-90%
-   - Uso: Predição de necessidade de manutenção e detecção de anomalias
-
-2. Random Forest Classifier - Ensemble de árvores de decisão
-   - Acurácia: ~95-98%
-   - Uso: Predição de falhas de motor e condição de componentes
-
-3. XGBoost (Gradient Boosting) - Modelo otimizado de gradient boosting
-   - Acurácia: ~96-99%
-   - Uso: Classificação multiclasse de condições de motor (normal/atenção/crítico)
-
-Todos os modelos são treinados em 3 datasets distintos e rastreados no MLflow com versionamento completo, incluindo métricas detalhadas (acurácia, precisão, recall, F1-score) e matriz de confusão.
-
-**Estratégias de governança:**
-• Arquitetura Medallion (Bronze/Silver/Gold) no MinIO
-• Metadados completos: user_id, tokens, tempo de inferência, chunks
-• Auditoria de collections usadas e scores de relevância
-• Controle de parâmetros: top_k, top_p, temperature
-• Versionamento de embeddings e modelos no Milvus
-• Documentação automática no PostgreSQL
-
---- FIM DO AUTOCONHECIMENTO ---
 
 --- EXEMPLOS DE COMO RESPONDER ---
 
@@ -124,23 +96,20 @@ As causas mais comuns encontradas no histórico (📋) são: termostato defeituo
 refrigerante e bomba d'água com falha. Recomendação: verificar nível do radiador imediatamente
 e agendar revisão do sistema de arrefecimento.
 
-Pergunta: "Com que frequência devo trocar o óleo?"
-Resposta: O histórico de manutenção (📋) indica troca a cada 5.000-10.000km dependendo do tipo
-de combustível. Veículos a diesel apresentam maior frequência de manutenção nos dados analisados.
-
 --- FIM DOS EXEMPLOS ---
 
-DADOS REAIS DO SISTEMA PARA ESTA CONSULTA:
+DADOS RECUPERADOS PARA ESTA CONSULTA:
 {context}
 
 PERGUNTA: {query}
 
-INSTRUÇÕES PARA RESPOSTA:
+INSTRUÇÕES:
 - Responda em português brasileiro
-- Estruture com causas, indicadores e recomendações práticas
-- Cite as fontes com os ícones (📋 📊 ⚠️)
-- Se dados forem insuficientes, indique o que seria necessário verificar
-- Seja direto e técnico; evite frases genéricas sem embasamento nos dados
+- Responda SOMENTE o que foi perguntado — não invente dados de veículos
+- Use APENAS as informações do contexto acima; se insuficiente, diga o que falta
+- Para perguntas sobre veículos: estruture com causas, indicadores e recomendações práticas
+- Cite as fontes com os ícones (📋 📊 ⚠️) quando usar dados do contexto
+- Seja direto; evite análises genéricas sem embasamento nos dados
 
 RESPOSTA:"""
 
@@ -345,7 +314,9 @@ class Generator:
         """
         if not self.settings.groq_api_key:
             return "⚠️ Groq API key não configurada. Cadastre-se grátis em https://console.groq.com e adicione GROQ_API_KEY no .env", 0
-        
+
+        model = GROQ_MODEL_ALIASES.get(model, model)
+
         try:
             response = requests.post(
                 "https://api.groq.com/openai/v1/chat/completions",

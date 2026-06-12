@@ -340,15 +340,43 @@ def build_interface() -> gr.Blocks:
     }}
 
     /* ── Layout root ───────────────────────────────── */
+    html, body {{
+        overflow-x: hidden !important;
+        max-width: 100vw !important;
+        margin: 0 !important;
+    }}
     .gradio-container {{
-        max-width: 1200px !important;
+        max-width: 100% !important;
+        width: 100% !important;
         margin: 0 auto !important;
-        padding: 0 16px !important;
+        padding: 0 12px !important;
+        box-sizing: border-box !important;
         font-family: 'Inter', 'Segoe UI', system-ui, sans-serif !important;
         background: var(--navy) !important;
+        overflow-x: hidden !important;
+    }}
+    .gradio-container .main,
+    .gradio-container .wrap,
+    .gradio-container .contain,
+    .app {{
+        background: var(--navy) !important;
+        max-width: 100% !important;
+        overflow-x: hidden !important;
     }}
     body, .dark {{
         background: var(--navy) !important;
+    }}
+    /* Remove bordas azuis laterais dos blocos Gradio */
+    .block, .panel, .form {{
+        border-color: rgba(255,255,255,0.06) !important;
+        background: transparent !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }}
+    .gr-group, .group {{
+        max-width: 100% !important;
+        overflow: hidden !important;
+        box-sizing: border-box !important;
     }}
 
     /* ── Header hero ────────────────────────────────── */
@@ -465,6 +493,33 @@ def build_interface() -> gr.Blocks:
     .ap-metric-value {{ font-size: 1.6rem; font-weight: 700; color: var(--gold); }}
     .ap-metric-label {{ font-size: 0.75rem; color: #8ca0b8; margin-top: 2px; }}
 
+    /* ── Chat + fontes — layout responsivo ─────────── */
+    .ap-main-row {{
+        flex-wrap: wrap !important;
+        gap: 16px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        align-items: stretch !important;
+    }}
+    .ap-chat-col,
+    .ap-sources-col {{
+        min-width: 0 !important;
+        max-width: 100% !important;
+        flex: 1 1 100% !important;
+        overflow: hidden !important;
+        box-sizing: border-box !important;
+    }}
+    @media (min-width: 960px) {{
+        .ap-chat-col {{
+            flex: 1 1 calc(68% - 8px) !important;
+            max-width: calc(68% - 8px) !important;
+        }}
+        .ap-sources-col {{
+            flex: 1 1 calc(32% - 8px) !important;
+            max-width: calc(32% - 8px) !important;
+        }}
+    }}
+
     /* ── Chat container ─────────────────────────────── */
     .ap-chat-wrap {{
         background: rgba(255,255,255,0.03);
@@ -551,9 +606,21 @@ def build_interface() -> gr.Blocks:
         background: rgba(255,255,255,0.03) !important;
         border: 1px solid rgba(201,168,76,0.2) !important;
         border-radius: var(--radius) !important;
-        padding: 16px !important;
-        height: 100% !important;
-        min-height: 200px;
+        padding: 12px 14px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-height: 120px;
+        max-height: 420px;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        word-break: break-word !important;
+        overflow-wrap: anywhere !important;
+        box-sizing: border-box !important;
+    }}
+    .ap-sources-wrap {{
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow: hidden !important;
     }}
     .ap-sources p, .ap-sources li, .ap-sources blockquote {{
         color: #8ca0b8 !important;
@@ -672,18 +739,48 @@ def build_interface() -> gr.Blocks:
     .ap-footer a {{ color: var(--gold); text-decoration: none; }}
 
     /* ── Responsive ─────────────────────────────────── */
-    @media (max-width: 768px) {{
-        .ap-hero {{ padding: 24px 20px 20px; }}
+    @media (max-width: 960px) {{
+        .ap-hero {{ padding: 24px 16px 20px; }}
         .ap-hero-logo {{ font-size: 1.9rem; }}
         .ap-metrics {{ grid-template-columns: repeat(2, 1fr); }}
         .ap-examples-grid {{ grid-template-columns: 1fr; }}
-        .gradio-container {{ padding: 0 8px !important; }}
+        .gradio-container {{ padding: 0 10px !important; }}
+        .ap-input-row {{
+            flex-direction: column !important;
+        }}
+        .ap-input-row > .column {{
+            width: 100% !important;
+            min-width: 0 !important;
+        }}
+        .ap-btn-send, .ap-btn-clear {{
+            width: 100% !important;
+        }}
+        .chatbot {{
+            height: 360px !important;
+            max-height: 50vh !important;
+        }}
+        .ap-sources {{
+            max-height: 280px;
+        }}
     }}
     @media (max-width: 480px) {{
-        .ap-hero-logo {{ font-size: 1.5rem; }}
-        .ap-hero-tagline {{ font-size: 0.9rem; }}
+        .ap-hero {{ padding: 20px 12px 16px; border-radius: 0; }}
+        .ap-hero-logo {{ font-size: 1.45rem; }}
+        .ap-hero-tagline {{ font-size: 0.88rem; }}
+        .ap-hero-pills {{ gap: 6px; }}
+        .ap-pill {{ font-size: 0.72rem; padding: 3px 8px; }}
         .ap-metrics {{ grid-template-columns: repeat(2, 1fr); gap: 8px; }}
-        .ap-metric-value {{ font-size: 1.3rem; }}
+        .ap-metric-value {{ font-size: 1.2rem; }}
+        .ap-section-title {{
+            font-size: 0.72rem;
+            flex-wrap: wrap;
+        }}
+        .ap-example-chip {{
+            white-space: normal !important;
+            text-align: left !important;
+            height: auto !important;
+            min-height: 44px !important;
+        }}
     }}
 
     /* ── Gradio overrides ───────────────────────────── */
@@ -693,9 +790,36 @@ def build_interface() -> gr.Blocks:
     .gradio-container .prose h3 {{
         color: var(--gold) !important;
     }}
-    .chatbot .wrap {{ background: transparent !important; }}
-    .chatbot {{ background: transparent !important; }}
+    .chatbot .wrap {{ background: transparent !important; max-width: 100% !important; }}
+    .chatbot {{
+        background: transparent !important;
+        max-width: 100% !important;
+        width: 100% !important;
+    }}
+    .chatbot .message-wrap, .chatbot .panel {{
+        max-width: 100% !important;
+        overflow-x: hidden !important;
+    }}
     label.svelte-1b6s6vi {{ color: #8ca0b8 !important; }}
+    /* Rows de exemplos: quebra em telas estreitas */
+    .ap-examples-row {{
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+    }}
+    .ap-examples-row > .column {{
+        flex: 1 1 100% !important;
+        min-width: 0 !important;
+    }}
+    @media (min-width: 640px) {{
+        .ap-examples-row > .column {{
+            flex: 1 1 calc(50% - 8px) !important;
+        }}
+    }}
+    @media (min-width: 1024px) {{
+        .ap-examples-row > .column {{
+            flex: 1 1 calc(25% - 8px) !important;
+        }}
+    }}
     """
 
     with gr.Blocks(
@@ -730,9 +854,9 @@ def build_interface() -> gr.Blocks:
         # ── Área principal de chat ───────────────────────────────────────
         gr.HTML('<div class="ap-section-title">💬 Chat de Diagnóstico</div>')
 
-        with gr.Row(equal_height=True):
-            # Coluna do chat (maior)
-            with gr.Column(scale=3, min_width=300):
+        with gr.Row(equal_height=False, elem_classes="ap-main-row"):
+            # Coluna do chat
+            with gr.Column(scale=3, elem_classes="ap-chat-col"):
                 with gr.Group(elem_classes="ap-chat-wrap"):
                     chatbot = gr.Chatbot(
                         label="",
@@ -743,7 +867,7 @@ def build_interface() -> gr.Blocks:
                         type="tuples",
                     )
 
-                with gr.Row(equal_height=True, elem_classes="ap-input-row"):
+                with gr.Row(equal_height=False, elem_classes="ap-input-row"):
                     question_input = gr.Textbox(
                         placeholder="Ex: Meu motor está superaquecendo, o que pode ser?",
                         label="",
@@ -753,7 +877,7 @@ def build_interface() -> gr.Blocks:
                         show_label=False,
                         container=False,
                     )
-                    with gr.Column(scale=1, min_width=110):
+                    with gr.Column(scale=1, min_width=100, elem_classes="ap-input-actions"):
                         send_btn = gr.Button(
                             "Enviar ➤",
                             variant="primary",
@@ -771,8 +895,7 @@ def build_interface() -> gr.Blocks:
                     value=False,
                     elem_classes="ap-checkbox",
                 )
-                
-                # Dropdown de seleção de modelo
+
                 model_choices, default_model = get_available_models()
                 model_selector = gr.Dropdown(
                     label="🤖 Modelo LLM",
@@ -782,13 +905,14 @@ def build_interface() -> gr.Blocks:
                     info="Escolha entre modelos locais (Ollama) ou cloud (OpenAI/Anthropic)",
                 )
 
-            # Coluna de fontes (menor)
-            with gr.Column(scale=1, min_width=220):
-                gr.HTML('<div class="ap-section-title" style="margin-top:0">📁 Fontes</div>')
-                sources_display = gr.Markdown(
-                    value="*Ative **Mostrar documentos** e faça uma pergunta para ver as fontes utilizadas.*",
-                    elem_classes="ap-sources",
-                )
+            # Coluna de fontes — empilha abaixo do chat em telas estreitas
+            with gr.Column(scale=1, elem_classes="ap-sources-col"):
+                with gr.Group(elem_classes="ap-sources-wrap"):
+                    gr.HTML('<div class="ap-section-title" style="margin-top:0">📁 Fontes</div>')
+                    sources_display = gr.Markdown(
+                        value="*Ative **Mostrar documentos** e faça uma pergunta para ver as fontes utilizadas.*",
+                        elem_classes="ap-sources",
+                    )
 
         # ── Exemplos de perguntas ────────────────────────────────────────
         gr.HTML('<div class="ap-section-title">💡 Exemplos de Perguntas</div>')
@@ -796,9 +920,9 @@ def build_interface() -> gr.Blocks:
         example_btns = []
         rows_of_4 = [examples[i:i+4] for i in range(0, len(examples), 4)]
         for row_examples in rows_of_4:
-            with gr.Row():
+            with gr.Row(elem_classes="ap-examples-row"):
                 for ex in row_examples:
-                    with gr.Column(scale=1, min_width=150):
+                    with gr.Column(scale=1):
                         btn = gr.Button(
                             f"💬 {ex}",
                             elem_classes="ap-example-chip",

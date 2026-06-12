@@ -91,27 +91,27 @@ def get_available_models():
     ]
     
     # ── Modelos Groq (cloud GRATUITO) ─────────────────────────────
-    # Sempre mostra, mas indica se precisa configurar API key
+    # Modelos atualizados (2026): llama-3.1-70b-versatile, mixtral e gemma foram descontinuados
     has_groq_key = bool(settings.groq_api_key)
     models["groq"] = [
         {
-            "name": "llama-3.1-70b-versatile", 
-            "display_name": f"Llama 3.1 70B (Groq - Grátis){' ⚠️ Configure API Key' if not has_groq_key else ' ✨'}", 
-            "provider": "groq", 
+            "name": "llama-3.3-70b-versatile",
+            "display_name": f"Llama 3.3 70B (Groq - Grátis){' ⚠️ Configure API Key' if not has_groq_key else ' ✨'}",
+            "provider": "groq",
             "local": False,
             "requires_key": not has_groq_key,
         },
         {
-            "name": "mixtral-8x7b-32768", 
-            "display_name": f"Mixtral 8x7B (Groq - Grátis){' ⚠️ Configure API Key' if not has_groq_key else ' ✨'}", 
-            "provider": "groq", 
+            "name": "llama-3.1-8b-instant",
+            "display_name": f"Llama 3.1 8B Instant (Groq - Grátis){' ⚠️ Configure API Key' if not has_groq_key else ' ✨'}",
+            "provider": "groq",
             "local": False,
             "requires_key": not has_groq_key,
         },
         {
-            "name": "gemma-7b-it", 
-            "display_name": f"Gemma 7B (Groq - Grátis){' ⚠️ Configure API Key' if not has_groq_key else ' ✨'}", 
-            "provider": "groq", 
+            "name": "meta-llama/llama-4-scout-17b-16e-instruct",
+            "display_name": f"Llama 4 Scout 17B (Groq - Grátis){' ⚠️ Configure API Key' if not has_groq_key else ' ✨'}",
+            "provider": "groq",
             "local": False,
             "requires_key": not has_groq_key,
         },

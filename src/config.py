@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     minio_bucket_bronze: str = "bronze"  # Dados brutos (CSV original)
     minio_bucket_silver: str = "silver"  # Dados limpos
     minio_bucket_gold: str = "gold"      # Dados prontos para RAG
+    minio_bucket_governance: str = "governance"  # Documentação de governança
 
     # --- PostgreSQL ---
     postgres_url: str = "postgresql://autopredict:autopredict123@localhost:5432/autopredict"
@@ -52,7 +53,7 @@ class Settings(BaseSettings):
         "gpt-3.5-turbo",
         "claude-3-opus",
         "claude-3-sonnet",
-        "groq-llama-3.1-70b"
+        "groq-llama-3.3-70b"
     ]
     
     # --- Governança e Tokens ---
